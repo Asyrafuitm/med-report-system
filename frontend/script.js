@@ -379,7 +379,13 @@ async function loadInitialData() {
         state.doctors = meta.doctors || migrateMasterList(null, 'doctors');
         state.secretaries = meta.secretaries || migrateMasterList(null, 'secretaries');
         state.systemAuditLog = meta.systemAuditLog || [];
-        state.dailyRoutine.counterQueries = meta.counterQueries || [];
+        
+        if (meta.dailyRoutine) {
+            state.dailyRoutine = meta.dailyRoutine;
+        } else {
+            // fallback structure
+            state.dailyRoutine = { emails: [], calls: [], counterQueries: [], timeframe: 'Day' };
+        }
     }
 
     renderView();
@@ -3895,7 +3901,7 @@ function renderDailyRoutineView() {
                                value="${state.routineSearch}" oninput="state.routineSearch = this.value; renderView()">
                         <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%);">🔍</span>
                     </div>
-                    <select class="f-input" style="width: 140px;" onchange="state.dailyRoutine.timeframe = this.value; localStorage.setItem('MedReport_DailyRoutine', JSON.stringify(state.dailyRoutine)); renderView()">
+                    <select class="f-input" style="width: 140px;" onchange="state.dailyRoutine.timeframe = this.value; apiCall('save_routine.php', 'POST', state.dailyRoutine); renderView()">
                         <option value="Day" ${timeframe === 'Day' ? 'selected' : ''}>Today</option>
                         <option value="Week" ${timeframe === 'Week' ? 'selected' : ''}>Weekly</option>
                         <option value="Month" ${timeframe === 'Month' ? 'selected' : ''}>Monthly</option>
@@ -4848,7 +4854,7 @@ function updateRoutineStatus(type, id, val) {
     const idx = state.dailyRoutine[type].findIndex(item => item.id === id);
     if (idx !== -1) {
         state.dailyRoutine[type][idx].status = val;
-        localStorage.setItem('MedReport_DailyRoutine', JSON.stringify(state.dailyRoutine));
+        apiCall('save_routine.php', 'POST', state.dailyRoutine);
 
         // Audit
         console.log(`[Audit] ${state.user.name} updated status of ${type} #${id} to ${val}`);
@@ -4860,7 +4866,7 @@ function updateRoutineAction(id, val) {
     const idx = state.dailyRoutine.calls.findIndex(c => c.id === id);
     if (idx !== -1) {
         state.dailyRoutine.calls[idx].action = val;
-        localStorage.setItem('MedReport_DailyRoutine', JSON.stringify(state.dailyRoutine));
+        apiCall('save_routine.php', 'POST', state.dailyRoutine);
 
         // Audit
         console.log(`[Audit] ${state.user.name} updated action for call #${id}`);

@@ -17,9 +17,15 @@ try {
     $stmt = $pdo->query("SELECT action, details, username as user, timestamp FROM audit_logs ORDER BY timestamp DESC LIMIT 200");
     $meta['systemAuditLog'] = $stmt->fetchAll();
 
-    // Daily Routine (Current Day)
-    $stmt = $pdo->query("SELECT * FROM daily_routine WHERE date(timestamp) = date('now')");
-    $meta['dailyRoutine'] = $stmt->fetchAll();
+    // Try to fetch daily routine JSON state
+    try {
+        $stmt = $pdo->query("SELECT key_value FROM system_state WHERE key_name = 'daily_routine'");
+        if ($row = $stmt->fetch()) {
+            $meta['dailyRoutine'] = json_decode($row['key_value'], true);
+        }
+    } catch (Exception $e) {
+        // Table might not exist yet, fallback gracefully
+    }
 
     sendResponse($meta);
 
