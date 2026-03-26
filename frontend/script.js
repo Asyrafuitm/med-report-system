@@ -554,19 +554,25 @@ function renderView() {
 }
 
 function renderMailingListView() {
-    // Filter requests matching Post or Email + Post
+    // Filter requests matching Post or Email + Post, and exclude CANCELLED and COLLECT
     const mailingRequests = state.requests.filter(r => 
-        r.deliveryMethod && r.deliveryMethod.includes('Post') && r.status !== 'CANCELLED'
+        r.deliveryMethod && r.deliveryMethod.includes('Post') && r.status !== 'CANCELLED' && r.status !== 'COLLECT'
     );
     
     return `
         <div class="panel-card fade-in" style="padding: 24px;">
-            <div class="panel-title"><span>📮</span> Mailing List Applications</div>
+            <div class="panel-title" style="display: flex; justify-content: space-between; align-items: center;">
+                <div><span>📮</span> Mailing List Applications</div>
+                <button class="btn btn-primary" onclick="printSelectedStickers()">🖨️ Print Selected</button>
+            </div>
             <p style="color: #64748b; margin-bottom: 24px;">This list shows all active applications where the patient requested to receive their medical report via Post.</p>
             <div class="data-table-wrapper">
                 <table class="data-table">
                     <thead>
                         <tr>
+                            <th style="width: 40px; text-align: center;">
+                                <input type="checkbox" id="selectAllMailing" onclick="toggleAllMailingCheckboxes(this)">
+                            </th>
                             <th>MRN</th>
                             <th>Patient Name</th>
                             <th>Phone</th>
@@ -580,6 +586,9 @@ function renderMailingListView() {
                     <tbody>
                         ${mailingRequests.length > 0 ? mailingRequests.map(r => `
                             <tr>
+                                <td style="text-align: center;">
+                                    <input type="checkbox" class="mailing-checkbox" value="${r.id}">
+                                </td>
                                 <td><strong>${r.patientMRN || '-'}</strong></td>
                                 <td>${r.patientName || '-'}</td>
                                 <td>${r.patientPhone || '-'}</td>
@@ -593,13 +602,13 @@ function renderMailingListView() {
                                 <td>${new Date(r.createdAt).toLocaleDateString()}</td>
                                 <td>
                                     <div style="display: flex; gap: 8px;">
-                                        <button class="btn-ghost" onclick="state.editingId='${r.id}'; switchView('registration')" style="padding: 6px 12px; font-size: 0.8rem;">View Details</button>
-                                        <button class="btn-primary" onclick="printSticker('${r.patientName.replace(/'/g, "\\'")}', '${r.patientMRN}', '${r.patientPhone || ''}', \`${(r.deliveryDetail || '').replace(/`/g, '\\`')}\`)" style="padding: 6px 12px; font-size: 0.8rem;">🖨️ Print Sticker</button>
+                                        <button class="btn-ghost" onclick="state.editingId='${r.id}'; switchView('registration')" style="padding: 6px 12px; font-size: 0.8rem;">View</button>
+                                        <button class="btn-primary" onclick="printSticker('${r.patientName.replace(/'/g, "\\'")}', '${r.patientMRN}', '${r.patientPhone || ''}', \`${(r.deliveryDetail || '').replace(/`/g, '\\`')}\`)" style="padding: 6px 12px; font-size: 0.8rem;">🖨️ Print</button>
                                     </div>
                                 </td>
                             </tr>
                         `).join('') : `
-                            <tr><td colspan="8" style="text-align: center; color: #64748b; padding: 32px;">No mailing applications found.</td></tr>
+                            <tr><td colspan="9" style="text-align: center; color: #64748b; padding: 32px;">No mailing applications found.</td></tr>
                         `}
                     </tbody>
                 </table>
@@ -651,6 +660,81 @@ function printSticker(name, mrn, phone, address) {
     setTimeout(() => {
         window.print();
         // Clear after printing to prevent artifact bleeding into regular report prints
+        setTimeout(() => { container.innerHTML = ''; }, 1000);
+    }, 150);
+}
+
+function toggleAllMailingCheckboxes(source) {
+    document.querySelectorAll('.mailing-checkbox').forEach(cb => {
+        cb.checked = source.checked;
+    });
+}
+
+function printSelectedStickers() {
+    const checkedBoxes = Array.from(document.querySelectorAll('.mailing-checkbox:checked'));
+    if (checkedBoxes.length === 0) {
+        return showToast("Please select at least one record to print.", "warning");
+    }
+
+    let allStickersHtml = `
+        <style>
+            @media print {
+                @page { size: 8cm 3cm; margin: 0; }
+                html, body { 
+                    margin: 0 !important; 
+                    padding: 0 !important; 
+                    width: 8cm !important;
+                    height: 3cm !important; 
+                    overflow: hidden !important; 
+                }
+                #print-report-container {
+                    padding: 0.1cm !important;
+                    margin: 0 !important;
+                    width: 100% !important;
+                    height: 100% !important;
+                    box-sizing: border-box;
+                }
+                .sticker-print-template {
+                    page-break-after: always;
+                }
+                .sticker-print-template:last-child {
+                    page-break-after: auto;
+                }
+            }
+        </style>
+    `;
+
+    let printedCount = 0;
+
+    checkedBoxes.forEach(cb => {
+        const id = parseInt(cb.value);
+        const r = state.requests.find(req => req.id === id);
+        if (!r) return;
+        
+        const address = r.deliveryDetail;
+        if (!address || address.trim() === '') {
+            showToast(`Skipping ${r.patientName} (No Address)`, "warning");
+            return;
+        }
+
+        const formattedAddress = address.replace(/\n/g, '<br>');
+        allStickersHtml += `
+            <div class="sticker-print-template">
+                <div class="sticker-recipient">${r.patientName}</div>
+                <div class="sticker-mrn">MRN: ${r.patientMRN}</div>
+                <div class="sticker-address">${formattedAddress}</div>
+            </div>
+        `;
+        printedCount++;
+    });
+
+    if (printedCount === 0) return;
+
+    const container = document.getElementById('print-report-container');
+    container.innerHTML = allStickersHtml;
+
+    setTimeout(() => {
+        window.print();
         setTimeout(() => { container.innerHTML = ''; }, 1000);
     }, 150);
 }
