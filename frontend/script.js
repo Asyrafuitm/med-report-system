@@ -563,7 +563,7 @@ function renderMailingListView() {
         <div class="panel-card fade-in" style="padding: 24px;">
             <div class="panel-title" style="display: flex; justify-content: space-between; align-items: center;">
                 <div><span>📮</span> Mailing List Applications</div>
-                <button class="btn btn-primary" onclick="printSelectedStickers()">🖨️ Print Selected</button>
+                <button class="btn btn-primary" onclick="printSelectedList()">🖨️ Print Selected</button>
             </div>
             <p style="color: #64748b; margin-bottom: 24px;">This list shows all active applications where the patient requested to receive their medical report via Post.</p>
             <div class="data-table-wrapper">
@@ -575,6 +575,7 @@ function renderMailingListView() {
                             </th>
                             <th>MRN</th>
                             <th>Patient Name</th>
+                            <th>Requester Name</th>
                             <th>Phone</th>
                             <th>Mailing Address</th>
                             <th>Status</th>
@@ -591,6 +592,10 @@ function renderMailingListView() {
                                 </td>
                                 <td><strong>${r.patientMRN || '-'}</strong></td>
                                 <td>${r.patientName || '-'}</td>
+                                <td>
+                                    ${r.requesterType === 'Patient' ? r.patientName : (r.requesterName || r.patientName)}
+                                    <div style="font-size: 0.75rem; color: var(--text-muted);">${r.requesterType || 'Patient'}</div>
+                                </td>
                                 <td>${r.patientPhone || '-'}</td>
                                 <td>
                                     <div style="max-width: 250px; white-space: normal; line-height: 1.4;">
@@ -608,7 +613,7 @@ function renderMailingListView() {
                                 </td>
                             </tr>
                         `).join('') : `
-                            <tr><td colspan="9" style="text-align: center; color: #64748b; padding: 32px;">No mailing applications found.</td></tr>
+                            <tr><td colspan="10" style="text-align: center; color: #64748b; padding: 32px;">No mailing applications found.</td></tr>
                         `}
                     </tbody>
                 </table>
@@ -670,43 +675,41 @@ function toggleAllMailingCheckboxes(source) {
     });
 }
 
-function printSelectedStickers() {
+function printSelectedList() {
     const checkedBoxes = Array.from(document.querySelectorAll('.mailing-checkbox:checked'));
     if (checkedBoxes.length === 0) {
         return showToast("Please select at least one record to print.", "warning");
     }
 
-    let allStickersHtml = `
-        <style>
-            @media print {
-                @page { size: 8cm 3cm; margin: 0; }
-                html, body { 
-                    margin: 0 !important; 
-                    padding: 0 !important; 
-                    width: 8cm !important;
-                    height: 3cm !important; 
-                    overflow: hidden !important; 
-                }
-                #print-report-container {
-                    padding: 0.1cm !important;
-                    margin: 0 !important;
-                    width: 100% !important;
-                    height: 100% !important;
-                    box-sizing: border-box;
-                }
-                .sticker-print-template {
-                    page-break-after: always;
-                }
-                .sticker-print-template:last-child {
-                    page-break-after: auto;
-                }
-            }
-        </style>
+    let reportHtml = `
+        <div class="report-header">
+            <div class="report-title">
+                <h1>Mailing List Report</h1>
+                <p>Medical Report Delivery (Post)</p>
+            </div>
+            <div class="report-meta">
+                <div>Printed By: ${state.user.name}</div>
+                <div>Date: ${new Date().toLocaleString()}</div>
+                <div>Total Records: ${checkedBoxes.length}</div>
+            </div>
+        </div>
+        <table class="report-table" style="width: 100%; text-align: left; border-collapse: collapse;">
+            <thead>
+                <tr>
+                    <th style="border-bottom: 2px solid #000; padding: 8px;">No</th>
+                    <th style="border-bottom: 2px solid #000; padding: 8px;">MRN</th>
+                    <th style="border-bottom: 2px solid #000; padding: 8px;">Patient Name</th>
+                    <th style="border-bottom: 2px solid #000; padding: 8px;">Requester Name</th>
+                    <th style="border-bottom: 2px solid #000; padding: 8px;">Phone</th>
+                    <th style="border-bottom: 2px solid #000; padding: 8px;">Mailing Address</th>
+                </tr>
+            </thead>
+            <tbody>
     `;
 
     let printedCount = 0;
 
-    checkedBoxes.forEach(cb => {
+    checkedBoxes.forEach((cb, index) => {
         const id = parseInt(cb.value);
         const r = state.requests.find(req => req.id === id);
         if (!r) return;
@@ -718,20 +721,33 @@ function printSelectedStickers() {
         }
 
         const formattedAddress = address.replace(/\n/g, '<br>');
-        allStickersHtml += `
-            <div class="sticker-print-template">
-                <div class="sticker-recipient">${r.patientName}</div>
-                <div class="sticker-mrn">MRN: ${r.patientMRN}</div>
-                <div class="sticker-address">${formattedAddress}</div>
-            </div>
+        const reqName = r.requesterType === 'Patient' ? r.patientName : (r.requesterName || r.patientName);
+        
+        reportHtml += `
+            <tr>
+                <td style="border-bottom: 1px solid #ddd; padding: 12px 8px; vertical-align: top;">${index + 1}</td>
+                <td style="border-bottom: 1px solid #ddd; padding: 12px 8px; vertical-align: top; font-weight: bold;">${r.patientMRN || '-'}</td>
+                <td style="border-bottom: 1px solid #ddd; padding: 12px 8px; vertical-align: top;">${r.patientName || '-'}</td>
+                <td style="border-bottom: 1px solid #ddd; padding: 12px 8px; vertical-align: top;">
+                    ${reqName || '-'}<br>
+                    <small style="color: #64748b;">(${r.requesterType || 'Patient'})</small>
+                </td>
+                <td style="border-bottom: 1px solid #ddd; padding: 12px 8px; vertical-align: top;">${r.patientPhone || '-'}</td>
+                <td style="border-bottom: 1px solid #ddd; padding: 12px 8px; vertical-align: top;">${formattedAddress}</td>
+            </tr>
         `;
         printedCount++;
     });
 
+    reportHtml += `
+            </tbody>
+        </table>
+    `;
+
     if (printedCount === 0) return;
 
     const container = document.getElementById('print-report-container');
-    container.innerHTML = allStickersHtml;
+    container.innerHTML = reportHtml;
 
     setTimeout(() => {
         window.print();
