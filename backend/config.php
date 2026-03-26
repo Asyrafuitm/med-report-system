@@ -39,7 +39,13 @@ try {
             if ($driver === 'mysql') {
                 $sql = str_replace('AUTOINCREMENT', 'AUTO_INCREMENT', $sql);
             }
-            $pdo->exec($sql);
+            // Execute each statement individually to ensure MySQL compatibility
+            $statements = array_filter(array_map('trim', explode(';', $sql)));
+            foreach ($statements as $statement) {
+                if (!empty($statement)) {
+                    $pdo->exec($statement);
+                }
+            }
         }
     }
     
