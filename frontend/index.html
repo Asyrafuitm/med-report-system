@@ -52,6 +52,7 @@
     </div>
 
     <div class="app-layout" id="app-layout" style="display: none;">
+        <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
         <!-- Sidebar Navigation -->
         <aside class="app-sidebar">
             <div class="sidebar-brand">
@@ -146,9 +147,14 @@
         <!-- Main Content Area -->
         <main class="app-main">
             <header class="main-header">
-                <div class="header-content">
-                    <h2 id="view-title">REGISTRATION</h2>
-                    <p id="view-desc">Register and manage medical report requests.</p>
+                <div class="header-content" style="display: flex; align-items: center; gap: 16px;">
+                    <button id="mobile-menu-btn" class="mobile-only-btn" onclick="toggleSidebar()">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                    </button>
+                    <div>
+                        <h2 id="view-title">REGISTRATION</h2>
+                        <p id="view-desc">Register and manage medical report requests.</p>
+                    </div>
                 </div>
                 <div class="header-actions">
                     <div class="live-clock" id="live-clock">--:--:--</div>

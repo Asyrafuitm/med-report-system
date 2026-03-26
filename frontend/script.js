@@ -4938,3 +4938,27 @@ function exportRoutineData() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+// --- MOBILE SIDEBAR HANDLERS ---
+function toggleSidebar() {
+    const sidebar = document.querySelector('.app-sidebar');
+    const overlay = document.querySelector('.sidebar-overlay');
+    if (sidebar && overlay) {
+        sidebar.classList.toggle('mobile-open');
+        overlay.classList.toggle('active');
+    }
+}
+
+// Auto-close sidebar on menu item click (mobile)
+setTimeout(() => {
+    document.querySelectorAll('.menu-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (window.innerWidth <= 768) {
+                const sidebar = document.querySelector('.app-sidebar');
+                const overlay = document.querySelector('.sidebar-overlay');
+                if (sidebar) sidebar.classList.remove('mobile-open');
+                if (overlay) overlay.classList.remove('active');
+            }
+        });
+    });
+}, 1000);
