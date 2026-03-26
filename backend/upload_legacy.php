@@ -37,10 +37,16 @@ try {
         $dateCollected = trim($row['DATE COLLECTED'] ?? '');
         $appNote = trim($row['APP NOTE'] ?? '');
         
-        // 1. Upsert Patient
-        $stmt = $pdo->prepare("INSERT INTO patients (mrn, name, ic_no, phone) VALUES (?, ?, 'N/A', 'N/A')
-                               ON CONFLICT(mrn) DO UPDATE SET name=excluded.name");
-        $stmt->execute([$mrn, $name]);
+        // 1. Upsert Patient (Universal compatibility)
+        $stmt = $pdo->prepare("SELECT mrn FROM patients WHERE mrn = ?");
+        $stmt->execute([$mrn]);
+        if ($stmt->fetch()) {
+            $stmt = $pdo->prepare("UPDATE patients SET name = ? WHERE mrn = ?");
+            $stmt->execute([$name, $mrn]);
+        } else {
+            $stmt = $pdo->prepare("INSERT INTO patients (mrn, name, ic_no, phone) VALUES (?, ?, 'N/A', 'N/A')");
+            $stmt->execute([$mrn, $name]);
+        }
         
         // 2. Identify if Request already imported to avoid duplicate rows on re-upload
         // Uses patient_mrn, exact Date string, and Type as a fingerprint

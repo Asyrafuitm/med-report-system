@@ -12,17 +12,16 @@ if (!$input) {
 try {
     $pdo->beginTransaction();
 
-    // 1. Upsert Patient
-    $stmt = $pdo->prepare("INSERT INTO patients (mrn, name, ic_no, phone) 
-                           VALUES (?, ?, ?, ?) 
-                           ON CONFLICT(mrn) DO UPDATE SET 
-                           name=excluded.name, ic_no=excluded.ic_no, phone=excluded.phone");
-    $stmt->execute([
-        $input['patientMRN'],
-        $input['patientName'],
-        $input['patientIC'],
-        $input['patientPhone']
-    ]);
+    // 1. Upsert Patient (Universal compatibility)
+    $stmt = $pdo->prepare("SELECT mrn FROM patients WHERE mrn = ?");
+    $stmt->execute([$input['patientMRN']]);
+    if ($stmt->fetch()) {
+        $stmt = $pdo->prepare("UPDATE patients SET name = ?, ic_no = ?, phone = ? WHERE mrn = ?");
+        $stmt->execute([$input['patientName'], $input['patientIC'], $input['patientPhone'], $input['patientMRN']]);
+    } else {
+        $stmt = $pdo->prepare("INSERT INTO patients (mrn, name, ic_no, phone) VALUES (?, ?, ?, ?)");
+        $stmt->execute([$input['patientMRN'], $input['patientName'], $input['patientIC'], $input['patientPhone']]);
+    }
 
     // 2. Insert Request
     $stmt = $pdo->prepare("INSERT INTO requests (source, patient_mrn, requester_type, requester_name, requester_phone, 
