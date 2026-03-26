@@ -1,0 +1,7 @@
+{
+    "name": "asyraf/medical-report-walkin",
+    "description": "Medical Report Walk-In System",
+    "require": {
+        "php": "^8.0"
+    }
+}

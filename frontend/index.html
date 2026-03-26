@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Walk-In Registry | MedReport Standalone</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <!-- Login Overlay (Refined Nice Interface) -->
+    <div id="login-overlay" class="login-overlay">
+        <div class="login-container card">
+            <div class="brand" style="justify-content: center; margin-bottom: 24px;">
+                <div class="logo-icon" style="width: 48px; height: 48px; font-size: 1.5rem; border-radius: 12px;">W
+                </div>
+                <h2 style="font-size: 1.8rem; margin-left: 12px; font-weight: 800; color: #0f172a;">MedReport Pro</h2>
+            </div>
+            <div class="panel-header" style="text-align: center; margin-bottom: 24px;">
+                <h3 style="font-size: 1.2rem; font-weight: 700; color: #1e293b;">Autentikasi Diperlukan</h3>
+                <p style="color: #64748b; font-size: 0.85rem;">Gunakan sebarang ID dan kata laluan untuk mula.</p>
+            </div>
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="login-id"
+                        style="display: block; font-size: 0.75rem; font-weight: 700; color: #475569; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">User
+                        ID / Username</label>
+                    <input type="text" id="login-id" class="f-input" placeholder="Masukkan ID pekerja" required
+                        style="width: 100%; padding: 12px 16px; border-radius: 10px; border: 1px solid #e2e8f0; font-family: inherit;">
+                </div>
+                <div class="form-group" style="margin-top: 20px;">
+                    <label for="login-password"
+                        style="display: block; font-size: 0.75rem; font-weight: 700; color: #475569; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">Password</label>
+                    <input type="password" id="login-password" class="f-input" placeholder="••••••••" required
+                        style="width: 100%; padding: 12px 16px; border-radius: 10px; border: 1px solid #e2e8f0; font-family: inherit;">
+                </div>
+                <div
+                    style="font-size: 0.75rem; color: #64748b; margin-top: 12px; margin-bottom: 24px; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #f1f5f9;">
+                    Tip: Password lalai ialah <strong style="color: #2563eb;">p@ssword123</strong>
+                </div>
+                <button type="submit" class="btn btn-primary btn-full"
+                    style="padding: 14px; border-radius: 12px; font-weight: 700; font-size: 1rem; box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.2);">LOG
+                    IN</button>
+                <div style="text-align: center; margin-top: 20px; font-size: 0.75rem; color: #94a3b8;">
+                    Session protected by MedReport Security.
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="app-layout" id="app-layout" style="display: none;">
+        <!-- Sidebar Navigation -->
+        <aside class="app-sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-hexagon">W</div>
+                <div class="brand-text">
+                    <h1>Walk-In Registry</h1>
+                    <span>MedReport Pro</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-menu">
+                <div class="menu-label">RECORDS</div>
+                <button class="menu-item" data-view="registration">
+                    <span class="icon">📝</span>
+                    Patient Registration
+                </button>
+                <button class="menu-item" data-view="workloadEntry">
+                    <span class="icon">📥</span>
+                    Workload Entry
+                </button>
+                <button class="menu-item" data-view="history">
+                    <span class="icon">🔍</span>
+                    Application Tracker
+                </button>
+                <button class="menu-item" data-view="delivery">
+                    <span class="icon">🚚</span>
+                    Delivery Listing
+                </button>
+                <button class="menu-item" data-view="mailingList">
+                    <span class="icon">📮</span>
+                    Mailing List
+                </button>
+
+                <div class="menu-label" style="margin-top: 32px;">ANALYTICS</div>
+                <button class="menu-item active" data-view="dailyRoutine">
+                    <span class="icon">🏠</span>
+                    Daily Routine
+                </button>
+                <button class="menu-item" data-view="globalHistory">
+                    <span class="icon">📜</span>
+                    Audit Log
+                </button>
+                <button class="menu-item" data-view="statusDistribution">
+                    <span class="icon">📊</span>
+                    Status Distribution
+                </button>
+                <button class="menu-item" data-view="analytics">
+                    <span class="icon">📊</span>
+                    Performance
+                </button>
+                <button class="menu-item" data-view="uploadLegacy">
+                    <span class="icon">📤</span>
+                    Import Legacy Excel
+                </button>
+                <button class="menu-item" onclick="exportToCSV()">
+                    <span class="icon">📥</span>
+                    Export Data
+                </button>
+
+                <div class="menu-label" style="margin-top: 32px;">WORKFLOW HUB</div>
+                <button class="menu-item" data-view="doctorWorkload">
+                    <span class="icon">👩‍⚕️</span>
+                    Doctor Workload
+                </button>
+                <button class="menu-item" data-view="processFlow">
+                    <span class="icon">🗺️</span>
+                    Process Flow
+                </button>
+                <button class="menu-item" data-view="instructions">
+                    <span class="icon">📖</span>
+                    Instructions
+                </button>
+
+                <div class="menu-label" style="margin-top: 32px;">CONFIGURATION</div>
+                <button class="menu-item" data-view="settings">
+                    <span class="icon">⚙️</span>
+                    Settings
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-pill">
+                    <div class="user-avatar">AD</div>
+                    <div class="user-status">
+                        <span class="name">Administrator</span>
+                        <span class="role">Med Management</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="app-main">
+            <header class="main-header">
+                <div class="header-content">
+                    <h2 id="view-title">REGISTRATION</h2>
+                    <p id="view-desc">Register and manage medical report requests.</p>
+                </div>
+                <div class="header-actions">
+                    <div class="live-clock" id="live-clock">--:--:--</div>
+                </div>
+            </header>
+
+            <div class="scroll-container">
+                <section id="content-area" class="content-animate">
+                    <!-- Dynamic content will be injected here -->
+                </section>
+            </div>
+        </main>
+    </div>
+
+
+    <!-- Toast Notifications -->
+    <div id="toast-container"></div>
+
+    <!-- Analytics & Status Update Modal -->
+    <div id="analytics-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>MODAL TITLE</h3>
+                <button class="close-btn" onclick="toggleAnalyticsModal(false)">&times;</button>
+            </div>
+            <div class="modal-body" id="analytics-body">
+                <!-- Content injected via JS -->
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="script.js"></script>
+    <div id="print-report-container"></div>
+</body>
+
+</html>

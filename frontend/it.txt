@@ -1,0 +1,21 @@
+Boleh, ini draf mesej/ayat yang lurus dan profesional untuk anda berikan atau bacakan kepada IT Manager (ditulis dalam gaya dwibahasa yang biasa digunakan dalam persekitaran IT di Malaysia):
+
+"Salam bos/Encik [Nama IT Manager],
+
+Saya ada letakkan satu folder sistem nama 'Medical-Report-WalkIn' di dalam network shared folder server hims (\\hims\scan\Medical-Report-WalkIn).
+
+Sistem ini adalah web application untuk kegunaan staf kami merekod data secara berpusat (supaya semua staf boleh nampak data yang sama). Ia menggunakan HTML/JS di bahagian frontend, dan perlukan PHP + database SQLite di bahagian backend.
+
+Masalahnya sekarang, bila kami cuba akses sistem ni menggunakan URL web browser (http://hims/scan/Medical-Report-WalkIn/frontend/index.html), ia keluar Ralat IIS 404 Not Found.
+
+Jadi, saya nak minta tolong pihak IT untuk tengokkan dua (2) perkara ini di server hims:
+
+Virtual Directory / Web Hosting Setup: Tolong pautkan (link) folder Medical-Report-WalkIn ini ke dalam root IIS server (C:\inetpub\wwwroot atau jadikan dia application di dalam IIS). Supaya kami boleh akses URL http://hims/Medical-Report-WalkIn/....
+PHP Configuration: Tolong pastikan web server IIS tersebut dah di-setup dan support fail PHP (.php), sebab sistem ini akan simpan semua maklumat tu ke dalam database SQLite melalui script backend PHP.
+Bila URL dan PHP dah fungsi, barulah staf kami boleh mula key-in data yang sebenar dan data tersebut akan tersimpan selamat pada server. Boleh bantu saya tengokkan keadaan server hims tu?"
+
+Kenapa ayat ini berkesan: Orang IT akan terus tangkap 3 perkara utama daripada mesej ini:
+
+Anda nak host sistem di IIS Server.
+Anda perlukan folder sistem itu dimasukkan ke dalam Web Root (wwwroot) atau dijadikan Virtual Directory.
+Sistem perlukan PHP untuk proses backend. Mereka akan check jika komputer hims dah di-install PHP atau belum.
