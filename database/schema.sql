@@ -2,7 +2,7 @@
 
 -- Patients Table
 CREATE TABLE IF NOT EXISTS patients (
-    mrn TEXT PRIMARY KEY,
+    mrn VARCHAR(50) PRIMARY KEY,
     name TEXT NOT NULL,
     ic_no TEXT NOT NULL,
     phone TEXT NOT NULL
@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS patients (
 CREATE TABLE IF NOT EXISTS requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     source TEXT NOT NULL,
-    patient_mrn TEXT NOT NULL,
+    patient_mrn VARCHAR(50) NOT NULL,
     requester_type TEXT NOT NULL,
     requester_name TEXT,
     requester_phone TEXT,
@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS daily_routine (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     type TEXT NOT NULL, -- 'Email' or 'Call'
     topic TEXT NOT NULL,
-    patient_mrn TEXT,
+    patient_mrn VARCHAR(50),
     staff_id TEXT NOT NULL,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
 );
