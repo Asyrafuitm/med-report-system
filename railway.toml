@@ -1,5 +1,5 @@
 [build]
-builder = "RAILPACK"
+builder = "NIXPACKS"
 
 [deploy]
 startCommand = "php -S 0.0.0.0:$PORT"
