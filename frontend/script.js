@@ -2998,23 +2998,26 @@ function saveMasterLists() {
         };
     });
 
-    localStorage.setItem('MedReport_Master_Doctors', JSON.stringify(state.doctors));
-    localStorage.setItem('MedReport_Master_Secretaries', JSON.stringify(state.secretaries));
+    apiCall('save_meta.php', 'POST', { doctors: state.doctors, secretaries: state.secretaries }).then(res => {
+        if (res && res.success) {
+            // Audit Trail
+            const auditEntry = {
+                timestamp: new Date().toISOString(),
+                user: state.user.name,
+                action: 'Save Secretary Master List',
+                detail: `Updated ${newDoctors.length} doctors and ${rawSecretaries.length} secretaries.`
+            };
+            state.systemAuditLog.push(auditEntry);
+            localStorage.setItem('MedReport_System_Audit', JSON.stringify(state.systemAuditLog));
 
-    // Audit Trail
-    const auditEntry = {
-        timestamp: new Date().toISOString(),
-        user: state.user.name,
-        action: 'Save Secretary Master List',
-        detail: `Updated ${newDoctors.length} doctors and ${rawSecretaries.length} secretaries.`
-    };
-    state.systemAuditLog.push(auditEntry);
-    localStorage.setItem('MedReport_System_Audit', JSON.stringify(state.systemAuditLog));
+            console.log(`[Audit Trail] Master List Updated:`, auditEntry);
 
-    console.log(`[Audit Trail] Master List Updated:`, auditEntry);
-
-    showToast("All changes saved successfully.", "success");
-    renderView();
+            showToast("All changes saved successfully.", "success");
+            renderView();
+        } else {
+            showToast("Failed to save to database.", "error");
+        }
+    });
 }
 
 function resetMasterLists() {
