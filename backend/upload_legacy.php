@@ -14,6 +14,34 @@ if (!isset($input['data']) || !is_array($input['data'])) {
 $data = $input['data'];
 $importedCount = 0;
 
+function parseDateStr($val, $dateOnly = false) {
+    if (empty($val) || $val === '-' || $val === 'N/A') return null;
+    
+    $format = $dateOnly ? 'Y-m-d' : 'Y-m-d H:i:s';
+    
+    if (is_numeric($val)) {
+        $unix = ($val - 25569) * 86400;
+        return gmdate($format, (int)$unix);
+    }
+    
+    $val = trim($val);
+    // Match DD/MM/YYYY or DD/MM/YYYY HH:MM
+    if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})/', $val, $m)) {
+        return sprintf("%04d-%02d-%02d%s", $m[3], $m[2], $m[1], $dateOnly ? '' : ' 00:00:00');
+    }
+    // Match DD-MM-YYYY
+    if (preg_match('/^(\d{1,2})-(\d{1,2})-(\d{4})/', $val, $m)) {
+        return sprintf("%04d-%02d-%02d%s", $m[3], $m[2], $m[1], $dateOnly ? '' : ' 00:00:00');
+    }
+    
+    $time = strtotime($val);
+    if ($time !== false) {
+        return date($format, $time);
+    }
+    
+    return null;
+}
+
 $pdo->beginTransaction();
 
 try {
@@ -25,16 +53,18 @@ try {
         if (empty($mrn)) continue;
         
         $name = trim($row['NAME'] ?? 'UNKNOWN');
-        $dateStr = trim($row['DATE'] ?? date('Y-m-d H:i:s'));
+        $dateRaw = trim($row['DATE'] ?? '');
+        $dateStr = parseDateStr($dateRaw) ?: date('Y-m-d H:i:s');
+        
         $status = trim($row['STATUS'] ?? 'APPLY');
         $type = trim($row['TYPE'] ?? 'Others');
         $sendDoctor = trim($row['SEND DOCTOR'] ?? '');
         $completeDoctor = trim($row['COMPLETE DOCTOR'] ?? '');
         
-        $dateSent = trim($row['DATE SENT'] ?? '');
-        $dateCompleted = trim($row['DATE COMPLETED'] ?? '');
-        $notificationDate = trim($row['1ST NOTIFICATION DATE'] ?? '');
-        $dateCollected = trim($row['DATE COLLECTED'] ?? '');
+        $dateSent = parseDateStr($row['DATE SENT'] ?? '', true) ?: '';
+        $dateCompleted = parseDateStr($row['DATE COMPLETED'] ?? '', true) ?: '';
+        $notificationDate = parseDateStr($row['1ST NOTIFICATION DATE'] ?? '', true) ?: '';
+        $dateCollected = parseDateStr($row['DATE COLLECTED'] ?? '', true) ?: '';
         $appNote = trim($row['APP NOTE'] ?? '');
         
         // 1. Upsert Patient (Universal compatibility)
