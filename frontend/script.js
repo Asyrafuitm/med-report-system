@@ -414,8 +414,8 @@ function handleLogin(e) {
     if (!id || !pass) return showToast("Sila masukkan ID dan Password", "error");
 
     // Nice interface security logic
-    if (pass !== "p@ssword123") {
-        return showToast('Password salah. Sila gunakan "p@ssword123"', "error");
+    if (pass !== "p@ssword123" && pass !== "password123") {
+        return showToast('Password salah. Sila gunakan "password123"', "error");
     }
 
     state.user = {
