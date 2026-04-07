@@ -2809,16 +2809,31 @@ function saveMonitoring(id) {
     }
 
     // Explicit log for the Save action
-    r.auditLog.push({
+    const saveLog = {
         timestamp: new Date().toISOString(),
         user: state.user.name,
         action: 'Save Monitoring',
         detail: changedFields.length > 0 ? changedFields.join('; ') : 'Re-saved without major changes'
-    });
+    };
+    r.auditLog.push(saveLog);
 
-    saveData();
-    showToast("Monitoring updated successfully!", "success");
-    renderView();
+    const payload = {
+        requestId: id,
+        monitoring: newMonitoring,
+        status: newStatus,
+        auditLogs: [saveLog]
+    };
+
+    apiCall('update_monitoring.php', 'POST', payload).then(res => {
+        if (res && res.success) {
+            saveData(); // Keep local cache updated
+            showToast("Monitoring updated successfully!", "success");
+            loadInitialData().then(() => renderView());
+        } else {
+            showToast("Failed to save monitoring to server.", "error");
+            renderView();
+        }
+    });
 }
 
 function addRemark(id) {

@@ -36,7 +36,9 @@ try {
             'completionDate' => ['date' => $mon['completion_date'] ?? '', 'by' => $mon['completion_by'] ?? ''],
             'notificationDate' => ['date' => $mon['notification_date'] ?? '', 'by' => $mon['notification_by'] ?? ''],
             'handoverDate' => ['date' => $mon['handover_date'] ?? '', 'by' => $mon['handover_by'] ?? ''],
-            'pmrTraceDate' => ['date' => $mon['pmr_trace_date'] ?? '', 'by' => $mon['pmr_trace_by'] ?? '', 'isNA' => (bool)($mon['pmr_trace_na'] ?? false)]
+            'pmrTraceDate' => ['date' => $mon['pmr_trace_date'] ?? '', 'by' => $mon['pmr_trace_by'] ?? '', 'isNA' => (bool)($mon['pmr_trace_na'] ?? false)],
+            'pmr' => (bool)($mon['pmr'] ?? false),
+            'iclic' => (bool)($mon['iclic'] ?? false)
         ];
 
         // Fetch Audit Log for this individual record
