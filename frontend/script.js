@@ -546,6 +546,12 @@ function renderView() {
         viewTitle.innerText = "DAILY ROUTINE DASHBOARD";
         viewDesc.innerText = "Consolidated workload for Emails and Caller Queries.";
         contentArea.innerHTML = renderDailyRoutineView();
+    } else if (state.view === 'reportStatistic') {
+        viewTitle.innerText = "REPORT STATISTIC";
+        viewDesc.innerText = "Overall medical report applications, KPI performance, and analytics.";
+        contentArea.innerHTML = renderReportStatisticView();
+        // Since loadData might fail if DOM isn't ready, wrap in tiny timeout
+        setTimeout(loadReportStatisticData, 50);
     } else if (state.view === 'workloadEntry') {
         viewTitle.innerText = "WORKLOAD DATA ENTRY";
         viewDesc.innerText = "Record new email and call queries for tracking.";
@@ -608,7 +614,7 @@ function renderMailingListView() {
                                 <td>
                                     <div style="display: flex; gap: 8px;">
                                         <button class="btn-ghost" onclick="state.editingId='${r.id}'; switchView('registration')" style="padding: 6px 12px; font-size: 0.8rem;">View</button>
-                                        <button class="btn-primary" onclick="printSticker('${r.patientName.replace(/'/g, "\\'")}', '${r.patientMRN}', '${r.patientPhone || ''}', \`${(r.deliveryDetail || '').replace(/`/g, '\\`')}\`)" style="padding: 6px 12px; font-size: 0.8rem;">🖨️ Print</button>
+                                        <button class="btn-primary" onclick="printSticker('${r.patientName.replace(/'/g, "\\'")}', '${r.patientMRN}', '${r.patientPhone || ''}', `${(r.deliveryDetail || '').replace(/`/g, '\`')}`)" style="padding: 6px 12px; font-size: 0.8rem;">🖨️ Print</button>
                                     </div>
                                 </td>
                             </tr>
@@ -3747,6 +3753,215 @@ function exportGlobalHistory() {
     link.click();
     document.body.removeChild(link);
     showToast("Audit log exported to CSV", "success");
+}
+
+let statChartInstances = {};
+
+function renderReportStatisticView() {
+    return `
+        <div class="panel-card fade-in" style="padding: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                <div class="panel-title"><span>📈</span> Statistical Insights</div>
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <select id="stat-month" class="f-input" onchange="loadReportStatisticData()">
+                        <option value="all">All Months</option>
+                        <option value="01">January</option>
+                        <option value="02">February</option>
+                        <option value="03">March</option>
+                        <option value="04">April</option>
+                        <option value="05">May</option>
+                        <option value="06">June</option>
+                        <option value="07">July</option>
+                        <option value="08">August</option>
+                        <option value="09">September</option>
+                        <option value="10">October</option>
+                        <option value="11">November</option>
+                        <option value="12">December</option>
+                    </select>
+                    <input type="number" id="stat-year" class="f-input" style="width: 100px;" value="${new Date().getFullYear()}" onchange="loadReportStatisticData()">
+                </div>
+            </div>
+            
+            <div id="stat-loading" style="text-align:center; padding: 40px; color: #64748b;">
+                Loading statistics from server. This may take a moment to calculate working days...
+            </div>
+            
+            <div id="stat-content" style="display: none;">
+                <!-- Volume & KPI Overview Grid -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                    <div class="stat-card" style="background: #eff6ff; padding: 20px; border-radius: 12px; text-align: center;">
+                        <h4 style="color: #1e3a8a; margin-bottom: 8px; font-size: 0.9rem;">Applications (Selected)</h4>
+                        <div id="stat-vol-selected" style="font-size: 2rem; font-weight: 800; color: #2563eb;">0</div>
+                    </div>
+                    <div class="stat-card" style="background: #f8fafc; padding: 20px; border-radius: 12px; text-align: center;">
+                        <h4 style="color: #475569; margin-bottom: 8px; font-size: 0.9rem;">Yearly Overall (Total)</h4>
+                        <div id="stat-vol-year" style="font-size: 2rem; font-weight: 800; color: #64748b;">0</div>
+                    </div>
+                    <div class="stat-card" style="background: #f0fdf4; padding: 20px; border-radius: 12px; text-align: center;">
+                        <h4 style="color: #14532d; margin-bottom: 8px; font-size: 0.9rem;">Physical File (PMR)</h4>
+                        <div id="stat-meth-pmr" style="font-size: 2rem; font-weight: 800; color: #16a34a;">0</div>
+                    </div>
+                    <div class="stat-card" style="background: #fffbeb; padding: 20px; border-radius: 12px; text-align: center;">
+                        <h4 style="color: #78350f; margin-bottom: 8px; font-size: 0.9rem;">ICLIC (EMR)</h4>
+                        <div id="stat-meth-iclic" style="font-size: 2rem; font-weight: 800; color: #d97706;">0</div>
+                    </div>
+                </div>
+
+                <!-- KPIs -->
+                <div class="panel-subtitle" style="margin-bottom: 16px;">⏱️ Key Performance Indicators (KPI) - Working Days Only</div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin-bottom: 32px;">
+                    <div class="stat-card" style="border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px;">
+                        <h4 style="margin-bottom: 8px; color: #334155; font-size: 0.85rem;">KPI 1: Delivery to Doctor (≤ 2 Days)</h4>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span id="stat-kpi1-txt" style="font-size: 1.5rem; font-weight: 700; color: #0f172a;">0%</span>
+                            <span id="stat-kpi1-raw" style="color: #64748b; font-size: 0.8rem;">0/0</span>
+                        </div>
+                        <div style="width: 100%; background: #e2e8f0; height: 8px; border-radius: 4px; overflow: hidden;">
+                            <div id="stat-kpi1-bar" style="width: 0%; height: 100%; background: #3b82f6; transition: width 0.5s;"></div>
+                        </div>
+                    </div>
+                    <div class="stat-card" style="border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px;">
+                        <h4 style="margin-bottom: 8px; color: #334155; font-size: 0.85rem;">KPI 2: Doctor Completion (≤ 18 Days)</h4>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span id="stat-kpi2-txt" style="font-size: 1.5rem; font-weight: 700; color: #0f172a;">0%</span>
+                            <span id="stat-kpi2-raw" style="color: #64748b; font-size: 0.8rem;">0/0</span>
+                        </div>
+                        <div style="width: 100%; background: #e2e8f0; height: 8px; border-radius: 4px; overflow: hidden;">
+                            <div id="stat-kpi2-bar" style="width: 0%; height: 100%; background: #8b5cf6; transition: width 0.5s;"></div>
+                        </div>
+                    </div>
+                    <div class="stat-card" style="border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px;">
+                        <h4 style="margin-bottom: 8px; color: #334155; font-size: 0.85rem;">KPI 3: Total Turnaround (≤ 21 Days)</h4>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span id="stat-kpi3-txt" style="font-size: 1.5rem; font-weight: 700; color: #0f172a;">0%</span>
+                            <span id="stat-kpi3-raw" style="color: #64748b; font-size: 0.8rem;">0/0</span>
+                        </div>
+                        <div style="width: 100%; background: #e2e8f0; height: 8px; border-radius: 4px; overflow: hidden;">
+                            <div id="stat-kpi3-bar" style="width: 0%; height: 100%; background: #10b981; transition: width 0.5s;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+                    <div class="stat-card" style="border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px;">
+                        <h4 style="margin-bottom: 16px; color: #334155; font-size: 0.9rem; text-align: center;">Status Breakdown</h4>
+                        <div style="position: relative; height: 250px; width: 100%;">
+                            <canvas id="statStatusChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="stat-card" style="border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px;">
+                        <h4 style="margin-bottom: 16px; color: #334155; font-size: 0.9rem; text-align: center;">Department Breakdown</h4>
+                        <div style="position: relative; height: 250px; width: 100%;">
+                            <canvas id="statDeptChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top Requests Table -->
+                <div class="stat-card" style="border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px;">
+                    <h4 style="margin-bottom: 16px; color: #334155; font-size: 0.9rem;">Top Request Types</h4>
+                    <table class="data-table" style="width: 100%; font-size: 0.85rem;">
+                        <thead><tr><th style="background:#f8fafc">Type of Application</th><th style="width: 100px; text-align: center; background:#f8fafc">Volume</th></tr></thead>
+                        <tbody id="stat-top-types-body"></tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+    `;
+}
+
+async function loadReportStatisticData() {
+    const month = document.getElementById('stat-month').value;
+    const year = document.getElementById('stat-year').value;
+    
+    document.getElementById('stat-loading').style.display = 'block';
+    document.getElementById('stat-content').style.display = 'none';
+
+    const res = await apiCall(`fetch_statistics.php?month=${month}&year=${year}`, 'GET');
+    if (!res || res.error) {
+        document.getElementById('stat-loading').innerHTML = '<span style="color:red">Failed to load statistics.</span>';
+        return;
+    }
+
+    // 1. Populate Metric Cards
+    document.getElementById('stat-vol-selected').innerText = res.volume.total_applications;
+    document.getElementById('stat-vol-year').innerText = res.volume.yearly_overall;
+    document.getElementById('stat-meth-pmr').innerText = res.methodology.physical_pmr;
+    document.getElementById('stat-meth-iclic').innerText = res.methodology.emr_iclic;
+
+    // 2. Populate KPIs
+    const setupKpiRaw = (id, met, total) => {
+        const perc = total > 0 ? Math.round((met / total) * 100) : 0;
+        document.getElementById(`stat-${id}-txt`).innerText = `${perc}%`;
+        document.getElementById(`stat-${id}-raw`).innerText = `${met}/${total}`;
+        document.getElementById(`stat-${id}-bar`).style.width = `${perc}%`;
+        // color coding
+        let color = '#ef4444'; // red
+        if (perc >= 80) color = '#10b981'; // green
+        else if (perc >= 50) color = '#f59e0b'; // orange
+        document.getElementById(`stat-${id}-txt`).style.color = color;
+        document.getElementById(`stat-${id}-bar`).style.backgroundColor = color;
+    };
+    setupKpiRaw('kpi1', res.kpi.kpi1_met, res.kpi.kpi1_total);
+    setupKpiRaw('kpi2', res.kpi.kpi2_met, res.kpi.kpi2_total);
+    setupKpiRaw('kpi3', res.kpi.kpi3_met, res.kpi.kpi3_total);
+
+    // 3. Render Top Types
+    const bodyArgs = res.popular_request_types.map(rt => {
+        return `<tr><td style="font-weight: 500;">${rt.type}</td><td style="text-align: center; color: var(--primary); font-weight: 700;">${rt.count}</td></tr>`;
+    });
+    document.getElementById('stat-top-types-body').innerHTML = bodyArgs.length > 0 ? bodyArgs.join('') : '<tr><td colspan="2" style="text-align:center;">No data found</td></tr>';
+
+    // 4. Render Charts
+    const statusCtx = document.getElementById('statStatusChart');
+    const deptCtx = document.getElementById('statDeptChart');
+
+    // Destroy old instances to prevent overlapping canvas paths
+    if (statChartInstances.status) statChartInstances.status.destroy();
+    if (statChartInstances.dept) statChartInstances.dept.destroy();
+
+    const statusLabels = res.status_distribution.map(s => s.status);
+    const statusData = res.status_distribution.map(s => s.count);
+    
+    // Status Pie
+    statChartInstances.status = new Chart(statusCtx, {
+        type: 'pie',
+        data: {
+            labels: statusLabels.length ? statusLabels : ['No Data'],
+            datasets: [{
+                data: statusData.length ? statusData : [1],
+                backgroundColor: statusLabels.length ? 
+                    ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#64748b', '#ef4444'] : 
+                    ['#e2e8f0']
+            }]
+        },
+        options: { maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+    });
+
+    // Dept Donut
+    const deptData = [
+        res.department_breakdown.CDO || 0,
+        res.department_breakdown.CPO || 0,
+        res.department_breakdown.CTD || 0,
+        res.department_breakdown.Others || 0
+    ];
+    
+    statChartInstances.dept = new Chart(deptCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['CDO', 'CPO', 'CTD', 'Others'],
+            datasets: [{
+                data: deptData,
+                backgroundColor: ['#2563eb', '#059669', '#d97706', '#94a3b8']
+            }]
+        },
+        options: { maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+    });
+
+    document.getElementById('stat-loading').style.display = 'none';
+    document.getElementById('stat-content').style.display = 'block';
 }
 
 function renderStatusDistributionHub() {

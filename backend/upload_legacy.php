@@ -65,7 +65,13 @@ try {
         $dateCompleted = parseDateStr($row['DATE COMPLETED'] ?? '', true) ?: '';
         $notificationDate = parseDateStr($row['1ST NOTIFICATION DATE'] ?? '', true) ?: '';
         $dateCollected = parseDateStr($row['DATE COLLECTED'] ?? '', true) ?: '';
+        $department = trim($row['DEPARTMENT'] ?? '');
         $appNote = trim($row['APP NOTE'] ?? '');
+        
+        // Ensure department column exists in DB before using it
+        try {
+            $pdo->exec("ALTER TABLE requests ADD COLUMN department TEXT;");
+        } catch (Exception $e) { /* ignore if column already exists */ }
         
         // 1. Upsert Patient (Universal compatibility)
         $stmt = $pdo->prepare("SELECT mrn FROM patients WHERE mrn = ?");
@@ -90,9 +96,9 @@ try {
             $stmt->execute([$status, $appNote, $reqId]);
         } else {
             $stmt = $pdo->prepare("INSERT INTO requests 
-                (source, patient_mrn, requester_type, delivery_method, remarks_category, status, notes, username, created_at) 
-                VALUES ('Legacy Excel', ?, 'Patient', 'Self-Collect', ?, ?, ?, 'System Upload', ?)");
-            $stmt->execute([$mrn, $type, $status, $appNote, $dateStr]);
+                (source, patient_mrn, requester_type, delivery_method, remarks_category, department, status, notes, username, created_at) 
+                VALUES ('Legacy Excel', ?, 'Patient', 'Self-Collect', ?, ?, ?, ?, 'System Upload', ?)");
+            $stmt->execute([$mrn, $type, $department, $status, $appNote, $dateStr]);
             $reqId = $pdo->lastInsertId();
         }
         

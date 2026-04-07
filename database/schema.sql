@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS requests (
     delivery_detail TEXT,
     delivery_email TEXT,
     remarks_category TEXT NOT NULL,
+    department TEXT,
     status VARCHAR(50) DEFAULT 'APPLY',
     notes TEXT,
     username TEXT NOT NULL,
