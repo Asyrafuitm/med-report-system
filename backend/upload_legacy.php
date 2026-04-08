@@ -41,6 +41,10 @@ function parseDateStr($val, $dateOnly = false) {
     
     return null;
 }
+// Ensure department column exists in DB before using it (must be outside transaction)
+try {
+    $pdo->exec("ALTER TABLE requests ADD COLUMN department TEXT;");
+} catch (Exception $e) { /* ignore if column already exists */ }
 
 $pdo->beginTransaction();
 
@@ -67,11 +71,6 @@ try {
         $dateCollected = parseDateStr($row['DATE COLLECTED'] ?? '', true) ?: '';
         $department = trim($row['DEPARTMENT'] ?? '');
         $appNote = trim($row['APP NOTE'] ?? '');
-        
-        // Ensure department column exists in DB before using it
-        try {
-            $pdo->exec("ALTER TABLE requests ADD COLUMN department TEXT;");
-        } catch (Exception $e) { /* ignore if column already exists */ }
         
         // 1. Upsert Patient (Universal compatibility)
         $stmt = $pdo->prepare("SELECT mrn FROM patients WHERE mrn = ?");
