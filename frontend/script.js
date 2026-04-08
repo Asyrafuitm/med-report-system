@@ -388,7 +388,7 @@ async function loadInitialData() {
         }
     }
 
-    renderView();
+    // renderView() is called by checkAuth() later if user is logged in
 }
 
 function checkAuth() {
@@ -407,27 +407,38 @@ function checkAuth() {
 }
 
 function handleLogin(e) {
-    e.preventDefault();
-    const id = document.getElementById('login-id').value.trim();
-    const pass = document.getElementById('login-password').value;
+    if (e) e.preventDefault();
+    try {
+        const id = document.getElementById('login-id').value.trim();
+        const pass = document.getElementById('login-password').value;
 
-    if (!id || !pass) return showToast("Sila masukkan ID dan Password", "error");
+        if (!id || !pass) {
+            showToast("Sila masukkan ID dan Password", "error");
+            return false;
+        }
 
-    // Nice interface security logic
-    if (pass !== "p@ssword123" && pass !== "password123") {
-        return showToast('Password salah. Sila gunakan "password123"', "error");
+        // Nice interface security logic
+        if (pass !== "p@ssword123" && pass !== "password123") {
+            showToast('Password salah. Sila gunakan "password123"', "error");
+            return false;
+        }
+
+        state.user = {
+            id: id,
+            name: id,
+            dept: 'Med Management',
+            initials: (id.substring(0, 2)).toUpperCase()
+        };
+
+        sessionStorage.setItem('MedReport_User', JSON.stringify(state.user));
+        checkAuth();
+        showToast(`Welcome back, ${id}!`, "success");
+        return false; // double safety against form submit
+    } catch (err) {
+        console.error("Login crash:", err);
+        alert("System error during login. Please contact administrator.");
+        return false;
     }
-
-    state.user = {
-        id: id,
-        name: id,
-        dept: 'Med Management',
-        initials: (id.substring(0, 2)).toUpperCase()
-    };
-
-    sessionStorage.setItem('MedReport_User', JSON.stringify(state.user));
-    checkAuth();
-    showToast(`Welcome back, ${id}!`, "success");
 }
 
 function logout() {
