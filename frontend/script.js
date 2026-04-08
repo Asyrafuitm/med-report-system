@@ -37,7 +37,16 @@ const CALL_OUT_TOPICS = [
 // --- APP STATE ---
 let state = {
     view: 'dailyRoutine', // 'dailyRoutine' as default landing page
-    user: JSON.parse(sessionStorage.getItem('MedReport_User')) || null,
+    user: (() => {
+        try {
+            const val = sessionStorage.getItem('MedReport_User');
+            return val ? JSON.parse(val) : null;
+        } catch (e) {
+            console.warn("Invalid session user format, clearing it.");
+            sessionStorage.removeItem('MedReport_User');
+            return null;
+        }
+    })(),
     requests: [], // Will be loaded from server
     filters: {
         date: '',
@@ -625,7 +634,7 @@ function renderMailingListView() {
                                 <td>
                                     <div style="display: flex; gap: 8px;">
                                         <button class="btn-ghost" onclick="state.editingId='${r.id}'; switchView('registration')" style="padding: 6px 12px; font-size: 0.8rem;">View</button>
-                                        <button class="btn-primary" onclick="printSticker('${r.patientName.replace(/'/g, "\\'")}', '${r.patientMRN}', '${r.patientPhone || ''}', `${(r.deliveryDetail || '').replace(/`/g, '\`')}`)" style="padding: 6px 12px; font-size: 0.8rem;">🖨️ Print</button>
+                                        <button class="btn-primary" onclick="printSticker(decodeURIComponent('${encodeURIComponent(r.patientName || '')}'), '${r.patientMRN || ''}', '${r.patientPhone || ''}', decodeURIComponent('${encodeURIComponent(r.deliveryDetail || '')}'))" style="padding: 6px 12px; font-size: 0.8rem;">🖨️ Print</button>
                                     </div>
                                 </td>
                             </tr>
