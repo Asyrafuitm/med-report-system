@@ -924,7 +924,12 @@ async function confirmLegacyUpload() {
                         pmr: false,
                         iclic: false,
                         doctor: rowUpper['SEND DOCTOR'] || '',
-                        secretary: ''
+                        secretary: (() => {
+                            const dName = rowUpper['SEND DOCTOR'] || '';
+                            if (!dName) return '';
+                            const dObj = state.doctors.find(d => (d.name||'').toLowerCase().trim() === dName.toLowerCase().trim());
+                            return dObj ? (dObj.secretary || '') : '';
+                        })()
                     },
                     auditLog: [{
                         timestamp: new Date().toISOString(),

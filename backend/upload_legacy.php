@@ -65,6 +65,16 @@ try {
         $sendDoctor = trim($row['SEND DOCTOR'] ?? '');
         $completeDoctor = trim($row['COMPLETE DOCTOR'] ?? '');
         
+        $secretary = '';
+        if ($sendDoctor !== '') {
+            $stmtSec = $pdo->prepare("SELECT secretary FROM doctors WHERE LOWER(name) = LOWER(?) LIMIT 1");
+            $stmtSec->execute([$sendDoctor]);
+            $resSec = $stmtSec->fetch(PDO::FETCH_ASSOC);
+            if ($resSec && !empty($resSec['secretary'])) {
+                $secretary = $resSec['secretary'];
+            }
+        }
+        
         $dateSent = parseDateStr($row['DATE SENT'] ?? '', true) ?: '';
         $dateCompleted = parseDateStr($row['DATE COMPLETED'] ?? '', true) ?: '';
         $notificationDate = parseDateStr($row['1ST NOTIFICATION DATE'] ?? '', true) ?: '';
@@ -107,18 +117,19 @@ try {
         if ($stmt->fetch()) {
             $stmt = $pdo->prepare("UPDATE monitoring SET 
                 doctor = ?, 
+                secretary = ?,
                 send_doctor_date = ?, 
                 completion_by = ?, 
                 completion_date = ?, 
                 notification_date = ?, 
                 handover_date = ? 
                 WHERE request_id = ?");
-            $stmt->execute([$sendDoctor, $dateSent, $completeDoctor, $dateCompleted, $notificationDate, $dateCollected, $reqId]);
+            $stmt->execute([$sendDoctor, $secretary, $dateSent, $completeDoctor, $dateCompleted, $notificationDate, $dateCollected, $reqId]);
         } else {
             $stmt = $pdo->prepare("INSERT INTO monitoring 
-                (request_id, doctor, send_doctor_date, completion_by, completion_date, notification_date, handover_date) 
-                VALUES (?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$reqId, $sendDoctor, $dateSent, $completeDoctor, $dateCompleted, $notificationDate, $dateCollected]);
+                (request_id, doctor, secretary, send_doctor_date, completion_by, completion_date, notification_date, handover_date) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$reqId, $sendDoctor, $secretary, $dateSent, $completeDoctor, $dateCompleted, $notificationDate, $dateCollected]);
         }
         
         $importedCount++;
