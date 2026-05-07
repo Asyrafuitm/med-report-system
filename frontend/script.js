@@ -622,20 +622,20 @@ function renderYesterdayEODView() {
 function generateYesterdayEODHTML(data) {
     const { summary, staff_breakdown, target_date } = data;
     
-    let html = \`
+    let html = `
         <div style="background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 24px;">
-            <h3 style="margin-top:0; color: var(--primary);">Summary for: \${target_date}</h3>
+            <h3 style="margin-top:0; color: var(--primary);">Summary for: ${target_date}</h3>
             <div style="display: flex; gap: 24px; margin-top: 16px; flex-wrap: wrap;">
                 <div style="flex:1; min-width: 150px; background: white; padding: 16px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center;">
-                    <div style="font-size: 2rem; font-weight: 800; color: #3b82f6;">\${summary.total_registrations}</div>
+                    <div style="font-size: 2rem; font-weight: 800; color: #3b82f6;">${summary.total_registrations}</div>
                     <div style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase;">New Registrations</div>
                 </div>
                 <div style="flex:1; min-width: 150px; background: white; padding: 16px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center;">
-                    <div style="font-size: 2rem; font-weight: 800; color: #10b981;">\${summary.total_routines}</div>
+                    <div style="font-size: 2rem; font-weight: 800; color: #10b981;">${summary.total_routines}</div>
                     <div style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Emails / Calls</div>
                 </div>
                 <div style="flex:1; min-width: 150px; background: white; padding: 16px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center;">
-                    <div style="font-size: 2rem; font-weight: 800; color: #8b5cf6;">\${summary.total_updates}</div>
+                    <div style="font-size: 2rem; font-weight: 800; color: #8b5cf6;">${summary.total_updates}</div>
                     <div style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase;">System Updates</div>
                 </div>
             </div>
@@ -653,24 +653,24 @@ function generateYesterdayEODHTML(data) {
                     </tr>
                 </thead>
                 <tbody>
-    \`;
+    `;
     
     if (Object.keys(staff_breakdown).length === 0) {
-        html += \`<tr><td colspan="4" style="text-align: center; padding: 20px; color: var(--text-muted);">No activity recorded yesterday.</td></tr>\`;
+        html += `<tr><td colspan="4" style="text-align: center; padding: 20px; color: var(--text-muted);">No activity recorded yesterday.</td></tr>`;
     } else {
         for (const [staff, stats] of Object.entries(staff_breakdown)) {
-            html += \`
+            html += `
                 <tr>
-                    <td style="font-weight: 700;">\${staff}</td>
-                    <td style="text-align: center;">\${stats.registrations}</td>
-                    <td style="text-align: center;">\${stats.routines}</td>
-                    <td style="text-align: center;">\${stats.updates}</td>
+                    <td style="font-weight: 700;">${staff}</td>
+                    <td style="text-align: center;">${stats.registrations}</td>
+                    <td style="text-align: center;">${stats.routines}</td>
+                    <td style="text-align: center;">${stats.updates}</td>
                 </tr>
-            \`;
+            `;
         }
     }
     
-    html += \`</tbody></table></div>\`;
+    html += `</tbody></table></div>`;
     return html;
 }
 
@@ -678,22 +678,22 @@ function copyYesterdayEODText() {
     if (!yesterdayEODData) return showToast('Data not loaded yet', 'error');
     
     const { summary, staff_breakdown, target_date } = yesterdayEODData;
-    let text = \`*EOD SUMMARY - \${target_date}*\\n\\n\`;
-    text += \`📈 *OVERALL TOTALS*\\n\`;
-    text += \`- New Registrations: \${summary.total_registrations}\\n\`;
-    text += \`- Emails / Calls: \${summary.total_routines}\\n\`;
-    text += \`- System Updates: \${summary.total_updates}\\n\\n\`;
+    let text = `*EOD SUMMARY - ${target_date}*\n\n`;
+    text += `📈 *OVERALL TOTALS*\n`;
+    text += `- New Registrations: ${summary.total_registrations}\n`;
+    text += `- Emails / Calls: ${summary.total_routines}\n`;
+    text += `- System Updates: ${summary.total_updates}\n\n`;
     
-    text += \`👩‍💻 *STAFF BREAKDOWN*\\n\`;
+    text += `👩‍💻 *STAFF BREAKDOWN*\n`;
     if (Object.keys(staff_breakdown).length === 0) {
-        text += \`No activity recorded.\\n\`;
+        text += `No activity recorded.\n`;
     } else {
         for (const [staff, stats] of Object.entries(staff_breakdown)) {
-            text += \`*\${staff}*\\n\`;
-            if (stats.registrations > 0) text += \` - Registrations: \${stats.registrations}\\n\`;
-            if (stats.routines > 0) text += \` - Emails/Calls: \${stats.routines}\\n\`;
-            if (stats.updates > 0) text += \` - Updates: \${stats.updates}\\n\`;
-            text += \`\\n\`;
+            text += `*${staff}*\n`;
+            if (stats.registrations > 0) text += ` - Registrations: ${stats.registrations}\n`;
+            if (stats.routines > 0) text += ` - Emails/Calls: ${stats.routines}\n`;
+            if (stats.updates > 0) text += ` - Updates: ${stats.updates}\n`;
+            text += `\n`;
         }
     }
     
