@@ -576,7 +576,132 @@ function renderView() {
         viewTitle.innerText = "WORKLOAD DATA ENTRY";
         viewDesc.innerText = "Record new email and call queries for tracking.";
         contentArea.innerHTML = renderWorkloadEntryView();
+    } else if (state.view === 'yesterdayEOD') {
+        viewTitle.innerText = "YESTERDAY'S EOD SUMMARY";
+        viewDesc.innerText = "Automated summary of staff activities from the previous day.";
+        contentArea.innerHTML = renderYesterdayEODView();
+        setTimeout(loadYesterdayEODData, 50);
     }
+}
+
+let yesterdayEODData = null;
+
+async function loadYesterdayEODData() {
+    try {
+        const response = await fetch('../backend/fetch_yesterday_summary.php');
+        const data = await response.json();
+        if (data.error) throw new Error(data.error);
+        yesterdayEODData = data;
+        
+        const container = document.getElementById('yesterday-eod-content');
+        if (container) {
+            container.innerHTML = generateYesterdayEODHTML(yesterdayEODData);
+        }
+    } catch (e) {
+        showToast(e.message, 'error');
+        const container = document.getElementById('yesterday-eod-content');
+        if (container) container.innerHTML = `<div style="color:red; padding: 20px;">Failed to load data: ${e.message}</div>`;
+    }
+}
+
+function renderYesterdayEODView() {
+    return `
+        <div class="panel-card fade-in" style="padding: 24px;">
+            <div class="panel-title" style="display: flex; justify-content: space-between; align-items: center;">
+                <div><span>📅</span> Yesterday's Staff Summary</div>
+                <button class="btn btn-primary" onclick="copyYesterdayEODText()">📋 Copy Text for WhatsApp</button>
+            </div>
+            <p style="color: #64748b; margin-bottom: 24px;">This report shows everything that was keyed in yesterday by our staff.</p>
+            <div id="yesterday-eod-content" style="min-height: 200px; display: flex; align-items: center; justify-content: center;">
+                <div class="spinner" style="margin-right: 12px; border: 3px solid rgba(0,0,0,0.1); border-left-color: var(--primary); border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite;"></div> Loading summary...
+            </div>
+        </div>
+    `;
+}
+
+function generateYesterdayEODHTML(data) {
+    const { summary, staff_breakdown, target_date } = data;
+    
+    let html = \`
+        <div style="background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 24px;">
+            <h3 style="margin-top:0; color: var(--primary);">Summary for: \${target_date}</h3>
+            <div style="display: flex; gap: 24px; margin-top: 16px; flex-wrap: wrap;">
+                <div style="flex:1; min-width: 150px; background: white; padding: 16px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center;">
+                    <div style="font-size: 2rem; font-weight: 800; color: #3b82f6;">\${summary.total_registrations}</div>
+                    <div style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase;">New Registrations</div>
+                </div>
+                <div style="flex:1; min-width: 150px; background: white; padding: 16px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center;">
+                    <div style="font-size: 2rem; font-weight: 800; color: #10b981;">\${summary.total_routines}</div>
+                    <div style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Emails / Calls</div>
+                </div>
+                <div style="flex:1; min-width: 150px; background: white; padding: 16px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center;">
+                    <div style="font-size: 2rem; font-weight: 800; color: #8b5cf6;">\${summary.total_updates}</div>
+                    <div style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase;">System Updates</div>
+                </div>
+            </div>
+        </div>
+        
+        <h4 style="margin-bottom: 12px;">Staff Breakdown</h4>
+        <div class="data-table-wrapper" style="overflow-x: auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Staff Name</th>
+                        <th style="text-align: center;">Registrations Keyed In</th>
+                        <th style="text-align: center;">Routine (Emails/Calls)</th>
+                        <th style="text-align: center;">System Updates</th>
+                    </tr>
+                </thead>
+                <tbody>
+    \`;
+    
+    if (Object.keys(staff_breakdown).length === 0) {
+        html += \`<tr><td colspan="4" style="text-align: center; padding: 20px; color: var(--text-muted);">No activity recorded yesterday.</td></tr>\`;
+    } else {
+        for (const [staff, stats] of Object.entries(staff_breakdown)) {
+            html += \`
+                <tr>
+                    <td style="font-weight: 700;">\${staff}</td>
+                    <td style="text-align: center;">\${stats.registrations}</td>
+                    <td style="text-align: center;">\${stats.routines}</td>
+                    <td style="text-align: center;">\${stats.updates}</td>
+                </tr>
+            \`;
+        }
+    }
+    
+    html += \`</tbody></table></div>\`;
+    return html;
+}
+
+function copyYesterdayEODText() {
+    if (!yesterdayEODData) return showToast('Data not loaded yet', 'error');
+    
+    const { summary, staff_breakdown, target_date } = yesterdayEODData;
+    let text = \`*EOD SUMMARY - \${target_date}*\\n\\n\`;
+    text += \`📈 *OVERALL TOTALS*\\n\`;
+    text += \`- New Registrations: \${summary.total_registrations}\\n\`;
+    text += \`- Emails / Calls: \${summary.total_routines}\\n\`;
+    text += \`- System Updates: \${summary.total_updates}\\n\\n\`;
+    
+    text += \`👩‍💻 *STAFF BREAKDOWN*\\n\`;
+    if (Object.keys(staff_breakdown).length === 0) {
+        text += \`No activity recorded.\\n\`;
+    } else {
+        for (const [staff, stats] of Object.entries(staff_breakdown)) {
+            text += \`*\${staff}*\\n\`;
+            if (stats.registrations > 0) text += \` - Registrations: \${stats.registrations}\\n\`;
+            if (stats.routines > 0) text += \` - Emails/Calls: \${stats.routines}\\n\`;
+            if (stats.updates > 0) text += \` - Updates: \${stats.updates}\\n\`;
+            text += \`\\n\`;
+        }
+    }
+    
+    navigator.clipboard.writeText(text).then(() => {
+        showToast("Text copied to clipboard! You can paste it into WhatsApp.", "success");
+    }).catch(err => {
+        showToast("Failed to copy text", "error");
+    });
 }
 
 function renderMailingListView() {
