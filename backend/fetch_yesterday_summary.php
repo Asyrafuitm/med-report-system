@@ -17,15 +17,35 @@ try {
     $stmtReq->execute([':dt' => $targetDate]);
     $regByStaff = $stmtReq->fetchAll(PDO::FETCH_ASSOC);
 
-    // 2. Daily Routine (Emails/Calls) by staff
-    $stmtRoutine = $pdo->prepare("
-        SELECT staff_id as username, COUNT(*) as count 
-        FROM daily_routine 
-        WHERE DATE(timestamp) = :dt 
-        GROUP BY staff_id
-    ");
-    $stmtRoutine->execute([':dt' => $targetDate]);
-    $routineByStaff = $stmtRoutine->fetchAll(PDO::FETCH_ASSOC);
+    // 2. Daily Routine (Emails/Calls/Counter Queries) by staff from system_state JSON blob
+    $stmtRoutine = $pdo->prepare("SELECT key_value FROM system_state WHERE key_name = 'daily_routine'");
+    $stmtRoutine->execute();
+    $rowRoutine = $stmtRoutine->fetch(PDO::FETCH_ASSOC);
+
+    $routineByStaff = [];
+    $totalRoutine = 0;
+
+    if ($rowRoutine && !empty($rowRoutine['key_value'])) {
+        $routineData = json_decode($rowRoutine['key_value'], true);
+        if ($routineData) {
+            $categories = ['emails', 'calls', 'counterQueries'];
+            foreach ($categories as $cat) {
+                if (isset($routineData[$cat]) && is_array($routineData[$cat])) {
+                    foreach ($routineData[$cat] as $item) {
+                        $itemDate = $item['date'] ?? '';
+                        if ($itemDate === $targetDate) {
+                            $staff = $item['staff'] ?? 'Unknown';
+                            if (!isset($routineByStaff[$staff])) {
+                                $routineByStaff[$staff] = 0;
+                            }
+                            $routineByStaff[$staff]++;
+                            $totalRoutine++;
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     // 3. Updates (Tasks completed/sent to doctor) by staff
     // Using audit_logs for a more accurate representation of staff activity
@@ -40,6 +60,27 @@ try {
     $stmtAudit->execute([':dt' => $targetDate]);
     $auditByStaff = $stmtAudit->fetchAll(PDO::FETCH_ASSOC);
 
+    // 4. Excel Uploads count
+    $stmtUploads = $pdo->prepare("
+        SELECT username, details
+        FROM audit_logs
+        WHERE DATE(timestamp) = :dt AND action = 'UPLOAD_EXCEL'
+    ");
+    $stmtUploads->execute([':dt' => $targetDate]);
+    $uploadsLogs = $stmtUploads->fetchAll(PDO::FETCH_ASSOC);
+
+    $uploadByStaff = [];
+    $totalUploads = 0;
+    foreach ($uploadsLogs as $log) {
+        $u = $log['username'] ?: 'Unknown';
+        if (preg_match('/Imported (\d+) records/', $log['details'], $matches)) {
+            $count = (int)$matches[1];
+            if (!isset($uploadByStaff[$u])) $uploadByStaff[$u] = 0;
+            $uploadByStaff[$u] += $count;
+            $totalUploads += $count;
+        }
+    }
+
     // Combine stats per staff
     $staffStats = [];
     $totalReg = 0;
@@ -48,23 +89,26 @@ try {
 
     foreach ($regByStaff as $row) {
         $u = $row['username'] ?: 'Unknown';
-        if (!isset($staffStats[$u])) $staffStats[$u] = ['registrations' => 0, 'routines' => 0, 'updates' => 0];
+        if (!isset($staffStats[$u])) $staffStats[$u] = ['registrations' => 0, 'routines' => 0, 'updates' => 0, 'uploads' => 0];
         $staffStats[$u]['registrations'] += $row['count'];
         $totalReg += $row['count'];
     }
 
-    foreach ($routineByStaff as $row) {
-        $u = $row['username'] ?: 'Unknown';
-        if (!isset($staffStats[$u])) $staffStats[$u] = ['registrations' => 0, 'routines' => 0, 'updates' => 0];
-        $staffStats[$u]['routines'] += $row['count'];
-        $totalRoutine += $row['count'];
+    foreach ($routineByStaff as $u => $count) {
+        if (!isset($staffStats[$u])) $staffStats[$u] = ['registrations' => 0, 'routines' => 0, 'updates' => 0, 'uploads' => 0];
+        $staffStats[$u]['routines'] += $count;
     }
 
     foreach ($auditByStaff as $row) {
         $u = $row['username'] ?: 'Unknown';
-        if (!isset($staffStats[$u])) $staffStats[$u] = ['registrations' => 0, 'routines' => 0, 'updates' => 0];
+        if (!isset($staffStats[$u])) $staffStats[$u] = ['registrations' => 0, 'routines' => 0, 'updates' => 0, 'uploads' => 0];
         $staffStats[$u]['updates'] += $row['count'];
         $totalUpdates += $row['count'];
+    }
+
+    foreach ($uploadByStaff as $u => $count) {
+        if (!isset($staffStats[$u])) $staffStats[$u] = ['registrations' => 0, 'routines' => 0, 'updates' => 0, 'uploads' => 0];
+        $staffStats[$u]['uploads'] += $count;
     }
 
     // Format final response
@@ -73,7 +117,8 @@ try {
         'summary' => [
             'total_registrations' => $totalReg,
             'total_routines' => $totalRoutine,
-            'total_updates' => $totalUpdates
+            'total_updates' => $totalUpdates,
+            'total_uploads' => $totalUploads
         ],
         'staff_breakdown' => $staffStats
     ];

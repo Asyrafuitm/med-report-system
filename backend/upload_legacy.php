@@ -135,6 +135,13 @@ try {
         $importedCount++;
     }
     
+    // Log the upload action for EOD tracking
+    if ($importedCount > 0) {
+        $user = isset($input['user']) ? $input['user'] : 'System Upload';
+        $stmt = $pdo->prepare("INSERT INTO audit_logs (request_id, username, action, details) VALUES (?, ?, 'UPLOAD_EXCEL', ?)");
+        $stmt->execute([0, $user, "Imported $importedCount records from legacy Excel/CSV"]);
+    }
+    
     $pdo->commit();
     echo json_encode(['success' => true, 'imported_count' => $importedCount]);
 } catch (Exception $e) {

@@ -1,6 +1,10 @@
 <?php
 // backend/config.php
 
+// Set default timezone to Malaysia
+date_default_timezone_set('Asia/Kuala_Lumpur');
+
+
 // Enable error reporting for development
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);

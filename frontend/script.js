@@ -609,7 +609,10 @@ function renderYesterdayEODView() {
         <div class="panel-card fade-in" style="padding: 24px;">
             <div class="panel-title" style="display: flex; justify-content: space-between; align-items: center;">
                 <div><span>📅</span> Yesterday's Staff Summary</div>
-                <button class="btn btn-primary" onclick="copyYesterdayEODText()">📋 Copy Text for WhatsApp</button>
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn btn-ghost" onclick="copyYesterdayEODText()">📋 Copy Text</button>
+                    <button class="btn btn-primary" onclick="pushToWhatsApp()" style="background: #25D366; color: white;">💬 Push to WhatsApp</button>
+                </div>
             </div>
             <p style="color: #64748b; margin-bottom: 24px;">This report shows everything that was keyed in yesterday by our staff.</p>
             <div id="yesterday-eod-content" style="min-height: 200px; display: flex; align-items: center; justify-content: center;">
@@ -638,6 +641,10 @@ function generateYesterdayEODHTML(data) {
                     <div style="font-size: 2rem; font-weight: 800; color: #8b5cf6;">${summary.total_updates}</div>
                     <div style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase;">System Updates</div>
                 </div>
+                <div style="flex:1; min-width: 150px; background: white; padding: 16px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center;">
+                    <div style="font-size: 2rem; font-weight: 800; color: #f59e0b;">${summary.total_uploads || 0}</div>
+                    <div style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Excel Uploads</div>
+                </div>
             </div>
         </div>
         
@@ -650,13 +657,14 @@ function generateYesterdayEODHTML(data) {
                         <th style="text-align: center;">Registrations Keyed In</th>
                         <th style="text-align: center;">Routine (Emails/Calls)</th>
                         <th style="text-align: center;">System Updates</th>
+                        <th style="text-align: center;">Excel Uploaded Records</th>
                     </tr>
                 </thead>
                 <tbody>
     `;
     
     if (Object.keys(staff_breakdown).length === 0) {
-        html += `<tr><td colspan="4" style="text-align: center; padding: 20px; color: var(--text-muted);">No activity recorded yesterday.</td></tr>`;
+        html += `<tr><td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">No activity recorded yesterday.</td></tr>`;
     } else {
         for (const [staff, stats] of Object.entries(staff_breakdown)) {
             html += `
@@ -665,6 +673,7 @@ function generateYesterdayEODHTML(data) {
                     <td style="text-align: center;">${stats.registrations}</td>
                     <td style="text-align: center;">${stats.routines}</td>
                     <td style="text-align: center;">${stats.updates}</td>
+                    <td style="text-align: center;">${stats.uploads || 0}</td>
                 </tr>
             `;
         }
@@ -682,7 +691,11 @@ function copyYesterdayEODText() {
     text += `📈 *OVERALL TOTALS*\n`;
     text += `- New Registrations: ${summary.total_registrations}\n`;
     text += `- Emails / Calls: ${summary.total_routines}\n`;
-    text += `- System Updates: ${summary.total_updates}\n\n`;
+    text += `- System Updates: ${summary.total_updates}\n`;
+    if (summary.total_uploads > 0) {
+        text += `- Excel Uploaded Records: ${summary.total_uploads}\n`;
+    }
+    text += `\n`;
     
     text += `👩‍💻 *STAFF BREAKDOWN*\n`;
     if (Object.keys(staff_breakdown).length === 0) {
@@ -693,6 +706,7 @@ function copyYesterdayEODText() {
             if (stats.registrations > 0) text += ` - Registrations: ${stats.registrations}\n`;
             if (stats.routines > 0) text += ` - Emails/Calls: ${stats.routines}\n`;
             if (stats.updates > 0) text += ` - Updates: ${stats.updates}\n`;
+            if (stats.uploads > 0) text += ` - Excel Uploads: ${stats.uploads}\n`;
             text += `\n`;
         }
     }
@@ -702,6 +716,39 @@ function copyYesterdayEODText() {
     }).catch(err => {
         showToast("Failed to copy text", "error");
     });
+}
+
+function pushToWhatsApp() {
+    if (!yesterdayEODData) return showToast('Data not loaded yet', 'error');
+    
+    const { summary, staff_breakdown, target_date } = yesterdayEODData;
+    let text = `*EOD SUMMARY - ${target_date}*\n\n`;
+    text += `📈 *OVERALL TOTALS*\n`;
+    text += `- New Registrations: ${summary.total_registrations}\n`;
+    text += `- Emails / Calls: ${summary.total_routines}\n`;
+    text += `- System Updates: ${summary.total_updates}\n`;
+    if (summary.total_uploads > 0) {
+        text += `- Excel Uploaded Records: ${summary.total_uploads}\n`;
+    }
+    text += `\n`;
+    
+    text += `👩‍💻 *STAFF BREAKDOWN*\n`;
+    if (Object.keys(staff_breakdown).length === 0) {
+        text += `No activity recorded.\n`;
+    } else {
+        for (const [staff, stats] of Object.entries(staff_breakdown)) {
+            text += `*${staff}*\n`;
+            if (stats.registrations > 0) text += ` - Registrations: ${stats.registrations}\n`;
+            if (stats.routines > 0) text += ` - Emails/Calls: ${stats.routines}\n`;
+            if (stats.updates > 0) text += ` - Updates: ${stats.updates}\n`;
+            if (stats.uploads > 0) text += ` - Excel Uploads: ${stats.uploads}\n`;
+            text += `\n`;
+        }
+    }
+    
+    const encodedText = encodeURIComponent(text);
+    // Open WhatsApp URL with pre-filled text
+    window.open(`https://api.whatsapp.com/send?text=${encodedText}`, '_blank');
 }
 
 function renderMailingListView() {
@@ -996,7 +1043,7 @@ async function confirmLegacyUpload() {
     btn.disabled = true;
 
     try {
-        let res = await apiCall('upload_legacy.php', 'POST', { data: uploadedLegacyData });
+        let res = await apiCall('upload_legacy.php', 'POST', { data: uploadedLegacyData, user: state.user.name });
         
         // --- LOCAL STORAGE MOCK FALLBACK FOR file:/// OR 404 ---
         if (!res) {
@@ -1823,13 +1870,58 @@ function renderAnalyticsPage() {
     };
 
 
-    // Analytics calculations for Counter Queries
-    const cqTally = {};
-    const filteredCQ = state.dailyRoutine.counterQueries || [];
+    // Workload Type Statistics
+    const workloadStats = {
+        daily: { Emails: 0, Calls: 0, Counter: 0, total: 0 },
+        monthly: { Emails: 0, Calls: 0, Counter: 0, total: 0 },
+        yearly: { Emails: 0, Calls: 0, Counter: 0, total: 0 }
+    };
+    
+    // Counter Workload Distribution Statistics
+    const counterDistStats = {
+        daily: { total: 0 },
+        monthly: { total: 0 },
+        yearly: { total: 0 }
+    };
 
+    const processWorkloadItem = (item, type) => {
+        if (!item.date) return;
+        
+        if (item.date.startsWith(todayStr)) {
+            workloadStats.daily[type]++;
+            workloadStats.daily.total++;
+            if (type === 'Counter') {
+                const qType = item.type || 'Other';
+                counterDistStats.daily[qType] = (counterDistStats.daily[qType] || 0) + 1;
+                counterDistStats.daily.total++;
+            }
+        }
+        if (item.date.startsWith(thisMonthStr)) {
+            workloadStats.monthly[type]++;
+            workloadStats.monthly.total++;
+            if (type === 'Counter') {
+                const qType = item.type || 'Other';
+                counterDistStats.monthly[qType] = (counterDistStats.monthly[qType] || 0) + 1;
+                counterDistStats.monthly.total++;
+            }
+        }
+        if (item.date.startsWith(thisYearStr)) {
+            workloadStats.yearly[type]++;
+            workloadStats.yearly.total++;
+            if (type === 'Counter') {
+                const qType = item.type || 'Other';
+                counterDistStats.yearly[qType] = (counterDistStats.yearly[qType] || 0) + 1;
+                counterDistStats.yearly.total++;
+            }
+        }
+    };
+
+    (state.dailyRoutine.emails || []).forEach(e => processWorkloadItem(e, 'Emails'));
+    (state.dailyRoutine.calls || []).forEach(c => processWorkloadItem(c, 'Calls'));
+
+    const filteredCQ = state.dailyRoutine.counterQueries || [];
     filteredCQ.forEach(cq => {
-        const type = cq.type || 'Other';
-        cqTally[type] = (cqTally[type] || 0) + 1;
+        processWorkloadItem(cq, 'Counter');
 
         // Add to staff tally
         const staff = cq.staff || 'System';
@@ -1950,34 +2042,30 @@ function renderAnalyticsPage() {
                     <div class="chart-header">
                         <h3>📊 Workload Type Breakdown</h3>
                     </div>
-                    <div style="margin-top: 16px;">
-                        ${(() => {
-            const emailCount = state.dailyRoutine.emails.length;
-            const callCount = state.dailyRoutine.calls.length;
-            const counterCount = (state.dailyRoutine.counterQueries || []).length;
-            const total = emailCount + callCount + counterCount;
-
-            const types = [
-                { label: 'Emails', count: emailCount, color: 'var(--primary)', icon: '📧' },
-                { label: 'Calls', count: callCount, color: 'var(--secondary)', icon: '📞' },
-                { label: 'Counter', count: counterCount, color: '#8b5cf6', icon: '🏢' }
-            ];
-
-            return types.map(t => {
-                const perc = total > 0 ? (t.count / total * 100) : 0;
-                return `
-                                <div class="dist-item">
-                                    <div class="dist-label-row">
-                                        <span>${t.icon} ${t.label}</span>
-                                        <span>${t.count} (${perc.toFixed(0)}%)</span>
-                                    </div>
-                                    <div class="progress-container">
-                                        <div class="progress-bar" style="width: ${perc}%; background: ${t.color};"></div>
-                                    </div>
+                    <div class="source-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 16px;">
+                        ${['daily', 'monthly', 'yearly'].map(period => `
+                            <div class="period-col">
+                                <div style="font-weight: 800; font-size: 0.85rem; color: var(--primary); margin-bottom: 12px; text-transform: uppercase; border-bottom: 2px solid #f1f5f9; padding-bottom: 4px;">
+                                    ${period === 'daily' ? 'Hari Ini' : period === 'monthly' ? 'Bulan Ini' : 'Tahun Ini'}
                                 </div>
-                            `;
-            }).join('');
-        })()}
+                                ${Object.entries(workloadStats[period]).filter(([k]) => k !== 'total').map(([src, count]) => {
+            const perc = workloadStats[period].total > 0 ? (count / workloadStats[period].total * 100) : 0;
+            const colors = { Emails: 'var(--primary)', Calls: 'var(--secondary)', Counter: '#8b5cf6' };
+            const icons = { Emails: '📧', Calls: '📞', Counter: '🏢' };
+            return `
+                                        <div style="margin-bottom: 12px;">
+                                            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 4px; font-weight: 600;">
+                                                <span>${icons[src]} ${src}</span>
+                                                <span>${count} (${perc.toFixed(0)}%)</span>
+                                            </div>
+                                            <div style="height: 6px; background: #f1f5f9; border-radius: 3px; overflow: hidden;">
+                                                <div style="height: 100%; width: ${perc}%; background: ${colors[src] || '#cbd5e1'};"></div>
+                                            </div>
+                                        </div>
+                                    `;
+        }).join('')}
+                            </div>
+                        `).join('')}
                     </div>
                 </div>
 
@@ -2017,21 +2105,29 @@ function renderAnalyticsPage() {
                     <div class="chart-header">
                         <h3>🏢 Counter Workload Distribution</h3>
                     </div>
-                    <div style="margin-top: 16px; max-height: 250px; overflow-y: auto;">
-                        ${Object.entries(cqTally).length > 0 ? Object.entries(cqTally).map(([type, count]) => {
-            const perc = totalCQAll > 0 ? (count / totalCQAll * 100) : 0;
-            return `
-                                <div class="dist-item">
-                                    <div class="dist-label-row">
-                                        <span>${type}</span>
-                                        <span>${count} (${perc.toFixed(0)}%)</span>
-                                    </div>
-                                    <div class="progress-container">
-                                        <div class="progress-bar" style="width: ${perc}%; background: #8b5cf6;"></div>
-                                    </div>
+                    <div class="source-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 16px;">
+                        ${['daily', 'monthly', 'yearly'].map(period => `
+                            <div class="period-col">
+                                <div style="font-weight: 800; font-size: 0.85rem; color: var(--primary); margin-bottom: 12px; text-transform: uppercase; border-bottom: 2px solid #f1f5f9; padding-bottom: 4px;">
+                                    ${period === 'daily' ? 'Hari Ini' : period === 'monthly' ? 'Bulan Ini' : 'Tahun Ini'}
                                 </div>
-                            `;
-        }).join('') : '<div style="color:var(--text-muted); padding:20px; text-align:center;">No counter queries recorded</div>'}
+                                ${Object.entries(counterDistStats[period]).filter(([k]) => k !== 'total').length > 0 ? 
+                                  Object.entries(counterDistStats[period]).filter(([k]) => k !== 'total').map(([type, count]) => {
+            const perc = counterDistStats[period].total > 0 ? (count / counterDistStats[period].total * 100) : 0;
+            return `
+                                        <div style="margin-bottom: 12px;">
+                                            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 4px; font-weight: 600;">
+                                                <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;" title="${type}">${type}</span>
+                                                <span>${count} (${perc.toFixed(0)}%)</span>
+                                            </div>
+                                            <div style="height: 6px; background: #f1f5f9; border-radius: 3px; overflow: hidden;">
+                                                <div style="height: 100%; width: ${perc}%; background: #8b5cf6;"></div>
+                                            </div>
+                                        </div>
+                                    `;
+        }).join('') : '<div style="color:var(--text-muted); font-size:0.75rem;">No records</div>'}
+                            </div>
+                        `).join('')}
                     </div>
                 </div>
             </div>
@@ -4384,7 +4480,7 @@ function renderDailyRoutineView() {
                                value="${state.routineSearch}" oninput="state.routineSearch = this.value; renderView()">
                         <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%);">🔍</span>
                     </div>
-                    <select class="f-input" style="width: 140px;" onchange="state.dailyRoutine.timeframe = this.value; apiCall('save_routine.php', 'POST', state.dailyRoutine); renderView()">
+                    <select class="f-input" style="width: 140px;" onchange="state.dailyRoutine.timeframe = this.value; renderView()">
                         <option value="Day" ${timeframe === 'Day' ? 'selected' : ''}>Today</option>
                         <option value="Week" ${timeframe === 'Week' ? 'selected' : ''}>Weekly</option>
                         <option value="Month" ${timeframe === 'Month' ? 'selected' : ''}>Monthly</option>
@@ -5263,13 +5359,15 @@ function addRoutineItem(type) {
     if (modal) document.body.removeChild(modal);
 }
 
-function addRoutineItemData(type, data) {
+async function addRoutineItemData(type, data) {
     const now = new Date();
     const date = now.toISOString().split('T')[0];
     const time = now.toTimeString().split(' ')[0];
 
+    let newItem = null;
+
     if (type === 'email') {
-        const newEmail = {
+        newItem = {
             id: Date.now(),
             date,
             time,
@@ -5279,10 +5377,9 @@ function addRoutineItemData(type, data) {
             status: 'Pending',
             staff: state.user.name
         };
-        state.dailyRoutine.emails.unshift(newEmail);
         console.log(`[Audit] ${state.user.name} recorded Email for ${data.identifier} from ${data.sender}`);
     } else if (type === 'call') {
-        const newCall = {
+        newItem = {
             id: Date.now(),
             date,
             time,
@@ -5294,10 +5391,9 @@ function addRoutineItemData(type, data) {
             action: '',
             staff: state.user.name
         };
-        state.dailyRoutine.calls.unshift(newCall);
         console.log(`[Audit] ${state.user.name} recorded Call(${data.direction}) from ${data.caller} [MRN: ${data.identifier}](${data.queryType})`);
     } else if (type === 'counter') {
-        const newCQ = {
+        newItem = {
             id: Date.now(),
             date,
             time,
@@ -5307,19 +5403,18 @@ function addRoutineItemData(type, data) {
             notes: data.notes || '',
             staff: state.user.name
         };
-        if (!state.dailyRoutine.counterQueries) state.dailyRoutine.counterQueries = [];
-        state.dailyRoutine.counterQueries.unshift(newCQ);
         console.log(`[Audit] ${state.user.name} recorded Counter Query [${data.queryType}] from ${data.visitor || 'Visitor'}`);
-
-        // Mocking API call
-        apiCall('save_counter_query.php', 'POST', newCQ);
-        renderView();
-        showToast("Counter query recorded.", "success");
-        return; // Already saved and rendered
     }
 
-    apiCall('save_routine.php', 'POST', state.dailyRoutine);
-    renderView();
+    await saveRoutineDataSafely(routine => {
+        if (type === 'email') routine.emails.unshift(newItem);
+        else if (type === 'call') routine.calls.unshift(newItem);
+        else if (type === 'counter') {
+            if (!routine.counterQueries) routine.counterQueries = [];
+            routine.counterQueries.unshift(newItem);
+        }
+    });
+
     showToast("Workload recorded.", "success");
 }
 
@@ -5334,27 +5429,23 @@ function updateQueryOptions(direction, targetId) {
 }
 
 function updateRoutineStatus(type, id, val) {
-    const idx = state.dailyRoutine[type].findIndex(item => item.id === id);
-    if (idx !== -1) {
-        state.dailyRoutine[type][idx].status = val;
-        apiCall('save_routine.php', 'POST', state.dailyRoutine);
-
-        // Audit
-        console.log(`[Audit] ${state.user.name} updated status of ${type} #${id} to ${val}`);
-        renderView();
-    }
+    saveRoutineDataSafely(routine => {
+        const idx = routine[type].findIndex(item => item.id === id);
+        if (idx !== -1) {
+            routine[type][idx].status = val;
+            console.log(`[Audit] ${state.user.name} updated status of ${type} #${id} to ${val}`);
+        }
+    });
 }
 
 function updateRoutineAction(id, val) {
-    const idx = state.dailyRoutine.calls.findIndex(c => c.id === id);
-    if (idx !== -1) {
-        state.dailyRoutine.calls[idx].action = val;
-        apiCall('save_routine.php', 'POST', state.dailyRoutine);
-
-        // Audit
-        console.log(`[Audit] ${state.user.name} updated action for call #${id}`);
-        renderView();
-    }
+    saveRoutineDataSafely(routine => {
+        const idx = routine.calls.findIndex(c => c.id === id);
+        if (idx !== -1) {
+            routine.calls[idx].action = val;
+            console.log(`[Audit] ${state.user.name} updated action for call #${id}`);
+        }
+    });
 }
 
 function exportRoutineData() {
@@ -5451,3 +5542,69 @@ setTimeout(() => {
         });
     });
 }, 1000);
+
+// --- AUTO-SYNC & CONCURRENCY CONTROL ---
+async function saveRoutineDataSafely(updaterFn) {
+    try {
+        const meta = await apiCall('fetch_meta.php');
+        let currentRoutine = meta && meta.dailyRoutine ? meta.dailyRoutine : { emails: [], calls: [], counterQueries: [] };
+        
+        // Preserve local UI state
+        currentRoutine.timeframe = state.dailyRoutine.timeframe || 'Day';
+        if (!currentRoutine.emails) currentRoutine.emails = [];
+        if (!currentRoutine.calls) currentRoutine.calls = [];
+        if (!currentRoutine.counterQueries) currentRoutine.counterQueries = [];
+        
+        // Apply updates
+        updaterFn(currentRoutine);
+        
+        // Update local state immediately
+        state.dailyRoutine = currentRoutine;
+        
+        // Push to server
+        await apiCall('save_routine.php', 'POST', currentRoutine);
+        
+        refreshRoutineTables();
+    } catch (e) {
+        console.error("Failed to save safely", e);
+        showToast("Error syncing data", "error");
+    }
+}
+
+function refreshRoutineTables() {
+    // Avoid interrupting if user is typing
+    if (document.activeElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) {
+        return;
+    }
+    
+    // Only re-render safe views
+    const safeViews = ['analytics', 'history', 'dailyRoutine', 'processFlow', 'tracker', 'delivery', 'dashboard'];
+    if (safeViews.includes(state.view)) {
+        renderView();
+    }
+}
+
+// Background auto-sync (15s interval)
+setInterval(async () => {
+    try {
+        if (!state.user) return; // Must be logged in
+
+        const meta = await apiCall('fetch_meta.php');
+        if (meta && meta.dailyRoutine) {
+            const oldTotal = (state.dailyRoutine.emails?.length || 0) + (state.dailyRoutine.calls?.length || 0) + (state.dailyRoutine.counterQueries?.length || 0);
+            const newTotal = (meta.dailyRoutine.emails?.length || 0) + (meta.dailyRoutine.calls?.length || 0) + (meta.dailyRoutine.counterQueries?.length || 0);
+            
+            if (newTotal !== oldTotal) {
+                const localTimeframe = state.dailyRoutine.timeframe;
+                state.dailyRoutine = meta.dailyRoutine;
+                state.dailyRoutine.timeframe = localTimeframe;
+                
+                if (!state.dailyRoutine.counterQueries) state.dailyRoutine.counterQueries = [];
+                
+                refreshRoutineTables();
+            }
+        }
+    } catch (e) {
+        // Quiet fail for background sync
+    }
+}, 15000);
