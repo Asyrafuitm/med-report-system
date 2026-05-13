@@ -11,18 +11,30 @@ $month = isset($_GET['month']) ? $_GET['month'] : 'all';
 try {
     $holidays = getMalaysiaHolidays($year);
 
-    $sql = "SELECT r.*, m.send_doctor_date, m.completion_date, m.pmr, m.iclic
-            FROM requests r 
-            LEFT JOIN monitoring m ON r.id = m.request_id 
-            WHERE strftime('%Y', r.created_at) = :yr OR YEAR(r.created_at) = :yr";
-            // The OR handles both SQLite and MySQL compatibility just in case 
-            
-    $params = [':yr' => (string)$year];
-    
-    if ($month !== 'all') {
-        $sql .= " AND (strftime('%m', r.created_at) = :mon OR MONTH(r.created_at) = :mon_num)";
-        $params[':mon'] = sprintf('%02d', $month);
-        $params[':mon_num'] = (int)$month;
+    $is_mysql = ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql');
+
+    if ($is_mysql) {
+        $sql = "SELECT r.*, m.send_doctor_date, m.completion_date, m.pmr, m.iclic
+                FROM requests r 
+                LEFT JOIN monitoring m ON r.id = m.request_id 
+                WHERE YEAR(r.created_at) = :yr";
+        $params = [':yr' => $year];
+        
+        if ($month !== 'all') {
+            $sql .= " AND MONTH(r.created_at) = :mon";
+            $params[':mon'] = (int)$month;
+        }
+    } else {
+        $sql = "SELECT r.*, m.send_doctor_date, m.completion_date, m.pmr, m.iclic
+                FROM requests r 
+                LEFT JOIN monitoring m ON r.id = m.request_id 
+                WHERE strftime('%Y', r.created_at) = :yr";
+        $params = [':yr' => (string)$year];
+        
+        if ($month !== 'all') {
+            $sql .= " AND strftime('%m', r.created_at) = :mon";
+            $params[':mon'] = sprintf('%02d', $month);
+        }
     }
 
     $stmt = $pdo->prepare($sql);
@@ -57,8 +69,13 @@ try {
     $typeCounts = [];
 
     // Yearly total fetch
-    $stmtYear = $pdo->prepare("SELECT COUNT(*) as yr_count FROM requests WHERE strftime('%Y', created_at) = :yr1 OR YEAR(created_at) = :yr2");
-    $stmtYear->execute([':yr1' => (string)$year, ':yr2' => $year]);
+    if ($is_mysql) {
+        $stmtYear = $pdo->prepare("SELECT COUNT(*) as yr_count FROM requests WHERE YEAR(created_at) = :yr");
+        $stmtYear->execute([':yr' => $year]);
+    } else {
+        $stmtYear = $pdo->prepare("SELECT COUNT(*) as yr_count FROM requests WHERE strftime('%Y', created_at) = :yr");
+        $stmtYear->execute([':yr' => (string)$year]);
+    }
     $yrResult = $stmtYear->fetch();
     $stats['volume']['yearly_overall'] = $yrResult ? (int)$yrResult['yr_count'] : 0;
 

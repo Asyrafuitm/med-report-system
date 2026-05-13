@@ -5160,6 +5160,10 @@ function renderWorkloadEntryView() {
                             <option value="Ask Direction">Ask Direction</option>
                             <option value="Ask Process">Ask Process</option>
                             <option value="General Enquiry (Non-Medical Report)">General Enquiry (Non-Medical Report)</option>
+                            <option value="Medical Report - Check Status - Not Complete Yet">Medical Report - Check Status - Not Complete Yet</option>
+                            <option value="Medical Report - Collected">Medical Report - Collected</option>
+                            <option value="Medical Report (Amendment) - Collected">Medical Report (Amendment) - Collected</option>
+                            <option value="Amendment (New Submission)">Amendment (New Submission)</option>
                         </select>
                     </div>
                     <div class="form-group span-2">
