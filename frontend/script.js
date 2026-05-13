@@ -638,7 +638,11 @@ function generateYesterdayEODHTML(data) {
                     <div style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Emails / Calls</div>
                 </div>
                 <div style="flex:1; min-width: 150px; background: white; padding: 16px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center;">
-                    <div style="font-size: 2rem; font-weight: 800; color: #8b5cf6;">${summary.total_updates}</div>
+                    <div style="font-size: 2rem; font-weight: 800; color: #8b5cf6;">${summary.total_counters || 0}</div>
+                    <div style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Counter Queries</div>
+                </div>
+                <div style="flex:1; min-width: 150px; background: white; padding: 16px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center;">
+                    <div style="font-size: 2rem; font-weight: 800; color: #ec4899;">${summary.total_updates}</div>
                     <div style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase;">System Updates</div>
                 </div>
                 <div style="flex:1; min-width: 150px; background: white; padding: 16px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center;">
@@ -656,6 +660,7 @@ function generateYesterdayEODHTML(data) {
                         <th>Staff Name</th>
                         <th style="text-align: center;">Registrations Keyed In</th>
                         <th style="text-align: center;">Routine (Emails/Calls)</th>
+                        <th style="text-align: center;">Counter Queries</th>
                         <th style="text-align: center;">System Updates</th>
                         <th style="text-align: center;">Excel Uploaded Records</th>
                     </tr>
@@ -664,7 +669,7 @@ function generateYesterdayEODHTML(data) {
     `;
     
     if (Object.keys(staff_breakdown).length === 0) {
-        html += `<tr><td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">No activity recorded yesterday.</td></tr>`;
+        html += `<tr><td colspan="6" style="text-align: center; padding: 20px; color: var(--text-muted);">No activity recorded yesterday.</td></tr>`;
     } else {
         for (const [staff, stats] of Object.entries(staff_breakdown)) {
             html += `
@@ -672,6 +677,7 @@ function generateYesterdayEODHTML(data) {
                     <td style="font-weight: 700;">${staff}</td>
                     <td style="text-align: center;">${stats.registrations}</td>
                     <td style="text-align: center;">${stats.routines}</td>
+                    <td style="text-align: center;">${stats.counters || 0}</td>
                     <td style="text-align: center;">${stats.updates}</td>
                     <td style="text-align: center;">${stats.uploads || 0}</td>
                 </tr>
@@ -691,6 +697,7 @@ function copyYesterdayEODText() {
     text += `📈 *OVERALL TOTALS*\n`;
     text += `- New Registrations: ${summary.total_registrations}\n`;
     text += `- Emails / Calls: ${summary.total_routines}\n`;
+    text += `- Counter Queries: ${summary.total_counters || 0}\n`;
     text += `- System Updates: ${summary.total_updates}\n`;
     if (summary.total_uploads > 0) {
         text += `- Excel Uploaded Records: ${summary.total_uploads}\n`;
@@ -705,6 +712,7 @@ function copyYesterdayEODText() {
             text += `*${staff}*\n`;
             if (stats.registrations > 0) text += ` - Registrations: ${stats.registrations}\n`;
             if (stats.routines > 0) text += ` - Emails/Calls: ${stats.routines}\n`;
+            if (stats.counters > 0) text += ` - Counter Queries: ${stats.counters}\n`;
             if (stats.updates > 0) text += ` - Updates: ${stats.updates}\n`;
             if (stats.uploads > 0) text += ` - Excel Uploads: ${stats.uploads}\n`;
             text += `\n`;
@@ -4413,6 +4421,9 @@ function renderDailyRoutineView() {
             const itemDate = new Date(item.date);
             if (timeframe === 'Day') {
                 return item.date === todayStr;
+            } else if (timeframe === 'Specific') {
+                const specDate = state.dailyRoutine.specificDate || todayStr;
+                return item.date === specDate;
             } else if (timeframe === 'Week') {
                 const weekAgo = new Date();
                 weekAgo.setDate(now.getDate() - 7);
@@ -4482,12 +4493,18 @@ function renderDailyRoutineView() {
                     </div>
                     <select class="f-input" style="width: 140px;" onchange="state.dailyRoutine.timeframe = this.value; renderView()">
                         <option value="Day" ${timeframe === 'Day' ? 'selected' : ''}>Today</option>
+                        <option value="Specific" ${timeframe === 'Specific' ? 'selected' : ''}>Specific Date</option>
                         <option value="Week" ${timeframe === 'Week' ? 'selected' : ''}>Weekly</option>
                         <option value="Month" ${timeframe === 'Month' ? 'selected' : ''}>Monthly</option>
                         <option value="Year" ${timeframe === 'Year' ? 'selected' : ''}>Yearly</option>
                     </select>
+                    ${timeframe === 'Specific' ? `
+                        <input type="date" class="f-input" style="width: 150px;" 
+                               value="${state.dailyRoutine.specificDate || todayStr}" 
+                               onchange="state.dailyRoutine.specificDate = this.value; renderView()">
+                    ` : ''}
                 </div>
-                <div class="live-clock" style="font-family: 'Courier New', monospace; font-weight: 800; color: var(--primary);">${now.toLocaleDateString()} ${timeframe} View</div>
+                <div class="live-clock" style="font-family: 'Courier New', monospace; font-weight: 800; color: var(--primary);">${timeframe === 'Specific' ? (state.dailyRoutine.specificDate || todayStr) : now.toLocaleDateString()} ${timeframe === 'Specific' ? 'Date' : timeframe} View</div>
                 <div style="display: flex; gap: 8px;">
                     <button class="btn btn-ghost" onclick="window.print()">🖨️ PDF / PRINT</button>
                     <button class="btn btn-primary" onclick="exportRoutineData()">📥 EXPORT CSV</button>

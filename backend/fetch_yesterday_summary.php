@@ -24,12 +24,15 @@ try {
 
     $routineByStaff = [];
     $totalRoutine = 0;
+    $counterByStaff = [];
+    $totalCounter = 0;
 
     if ($rowRoutine && !empty($rowRoutine['key_value'])) {
         $routineData = json_decode($rowRoutine['key_value'], true);
         if ($routineData) {
-            $categories = ['emails', 'calls', 'counterQueries'];
-            foreach ($categories as $cat) {
+            // Process Emails and Calls
+            $routineCats = ['emails', 'calls'];
+            foreach ($routineCats as $cat) {
                 if (isset($routineData[$cat]) && is_array($routineData[$cat])) {
                     foreach ($routineData[$cat] as $item) {
                         $itemDate = $item['date'] ?? '';
@@ -41,6 +44,21 @@ try {
                             $routineByStaff[$staff]++;
                             $totalRoutine++;
                         }
+                    }
+                }
+            }
+
+            // Process Counter Queries
+            if (isset($routineData['counterQueries']) && is_array($routineData['counterQueries'])) {
+                foreach ($routineData['counterQueries'] as $item) {
+                    $itemDate = $item['date'] ?? '';
+                    if ($itemDate === $targetDate) {
+                        $staff = $item['staff'] ?? 'Unknown';
+                        if (!isset($counterByStaff[$staff])) {
+                            $counterByStaff[$staff] = 0;
+                        }
+                        $counterByStaff[$staff]++;
+                        $totalCounter++;
                     }
                 }
             }
@@ -84,30 +102,48 @@ try {
     // Combine stats per staff
     $staffStats = [];
     $totalReg = 0;
-    $totalRoutine = 0;
+    $totalRoutineSum = 0;
+    $totalCounterSum = 0;
     $totalUpdates = 0;
 
     foreach ($regByStaff as $row) {
         $u = $row['username'] ?: 'Unknown';
-        if (!isset($staffStats[$u])) $staffStats[$u] = ['registrations' => 0, 'routines' => 0, 'updates' => 0, 'uploads' => 0];
+        if (!isset($staffStats[$u])) {
+            $staffStats[$u] = ['registrations' => 0, 'routines' => 0, 'counters' => 0, 'updates' => 0, 'uploads' => 0];
+        }
         $staffStats[$u]['registrations'] += $row['count'];
         $totalReg += $row['count'];
     }
 
     foreach ($routineByStaff as $u => $count) {
-        if (!isset($staffStats[$u])) $staffStats[$u] = ['registrations' => 0, 'routines' => 0, 'updates' => 0, 'uploads' => 0];
+        if (!isset($staffStats[$u])) {
+            $staffStats[$u] = ['registrations' => 0, 'routines' => 0, 'counters' => 0, 'updates' => 0, 'uploads' => 0];
+        }
         $staffStats[$u]['routines'] += $count;
+        $totalRoutineSum += $count;
+    }
+
+    foreach ($counterByStaff as $u => $count) {
+        if (!isset($staffStats[$u])) {
+            $staffStats[$u] = ['registrations' => 0, 'routines' => 0, 'counters' => 0, 'updates' => 0, 'uploads' => 0];
+        }
+        $staffStats[$u]['counters'] += $count;
+        $totalCounterSum += $count;
     }
 
     foreach ($auditByStaff as $row) {
         $u = $row['username'] ?: 'Unknown';
-        if (!isset($staffStats[$u])) $staffStats[$u] = ['registrations' => 0, 'routines' => 0, 'updates' => 0, 'uploads' => 0];
+        if (!isset($staffStats[$u])) {
+            $staffStats[$u] = ['registrations' => 0, 'routines' => 0, 'counters' => 0, 'updates' => 0, 'uploads' => 0];
+        }
         $staffStats[$u]['updates'] += $row['count'];
         $totalUpdates += $row['count'];
     }
 
     foreach ($uploadByStaff as $u => $count) {
-        if (!isset($staffStats[$u])) $staffStats[$u] = ['registrations' => 0, 'routines' => 0, 'updates' => 0, 'uploads' => 0];
+        if (!isset($staffStats[$u])) {
+            $staffStats[$u] = ['registrations' => 0, 'routines' => 0, 'counters' => 0, 'updates' => 0, 'uploads' => 0];
+        }
         $staffStats[$u]['uploads'] += $count;
     }
 
@@ -116,7 +152,8 @@ try {
         'target_date' => $targetDate,
         'summary' => [
             'total_registrations' => $totalReg,
-            'total_routines' => $totalRoutine,
+            'total_routines' => $totalRoutineSum,
+            'total_counters' => $totalCounterSum,
             'total_updates' => $totalUpdates,
             'total_uploads' => $totalUploads
         ],
